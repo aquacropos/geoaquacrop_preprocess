@@ -263,7 +263,8 @@ def safe_clip(src, mask):
     if not valid_clips:
         print("Warning: no valid polygons contained data.")
         empty = src.copy(deep=True)
-        empty[:] = src.rio.nodata
+        for var in list(empty.data_vars):
+            empty[var] = xr.full_like(empty[var], fill_value=np.nan)
         if "band" in empty.dims and empty.sizes["band"] == 1:
             empty = empty.squeeze("band", drop=True)
         return empty

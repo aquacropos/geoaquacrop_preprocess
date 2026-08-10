@@ -18,7 +18,7 @@ import cdsapi
 from shapely.geometry import mapping
 #import pdb # pdb.set_trace()
 
-from preproc_tools import agera5_merge_yearly, preproc_agera5, basegrid, makedirs, unzip_all
+from .preproc_tools import agera5_merge_yearly, preproc_agera5, basegrid, makedirs, unzip_all
 
 import socket
 import requests

@@ -6,7 +6,7 @@ import glob
 import rioxarray
 import xarray as xr
 import numpy as np
-from preproc_tools import makedirs, safe_clip
+from .preproc_tools import makedirs, safe_clip
 
 
 def soil(domain_path, res, basepath, templategrid_path, mask=None, to_match=None):

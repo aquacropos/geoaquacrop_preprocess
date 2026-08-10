@@ -40,7 +40,7 @@ import scipy.ndimage as ndi
 import xarray as xr
 from rasterio.warp import Resampling
 
-from preproc_tools import ensure_xy_dims, makedirs
+from .preproc_tools import ensure_xy_dims, makedirs
 
 # Cache of (model, scenario, ensemble, variable) -> (grid_label, version_suffix)
 # populated lazily by _discover_file_pattern().
@@ -391,7 +391,7 @@ def _preproc_and_save(src, variable, yearlist, basepath, to_match, model, scenar
         'cmip6_model'    : model,
         'cmip6_scenario' : scenario,
         'cmip6_ensemble' : ensemble,
-        'history'     : f'Preprocessed on {datetime.date.today().isoformat()} by aquacropgrid-preproc.',
+        'history'     : f'Preprocessed on {datetime.date.today().isoformat()} by geoaquacrop-preproc-dev.',
         'references'  : 'https://www.nasa.gov/nex/gddp',
     }
 

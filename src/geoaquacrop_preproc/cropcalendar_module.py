@@ -5,7 +5,7 @@ import xarray as xr
 import rioxarray as rio
 from shapely.geometry import mapping
 from rasterio.warp import Resampling
-from preproc_tools import download_url, unzip_all, ensure_xy_dims, makedirs, safe_clip
+from .preproc_tools import download_url, unzip_all, ensure_xy_dims, makedirs, safe_clip
 
 
 def cropcalendar(domain_path, basepath, referenceraster_path, mask=None, to_match=None):

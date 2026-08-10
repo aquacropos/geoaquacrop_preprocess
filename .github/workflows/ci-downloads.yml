@@ -1,0 +1,43 @@
+name: Download Tests
+
+# Triggered on pull requests that touch download-related source files,
+# or manually via workflow_dispatch.
+# Runs only on Ubuntu with Python 3.13 to keep costs low.
+
+on:
+  pull_request:
+    paths:
+      - "src/geoaquacrop_preproc/climate_AgERA5.py"
+      - "src/geoaquacrop_preproc/climate_nasanex.py"
+      - "src/geoaquacrop_preproc/soil.py"
+      - "src/geoaquacrop_preproc/crop_areas.py"
+      - "src/geoaquacrop_preproc/cropcalendar_module.py"
+      - "src/geoaquacrop_preproc/ricecalendar_marc.py"
+      - "src/geoaquacrop_preproc/preproc_tools.py"
+      - "tests/test_downloads.py"
+  workflow_dispatch:
+
+jobs:
+  test-downloads:
+    name: "Live-service download tests"
+    runs-on: ubuntu-latest
+    env:
+      RUN_DOWNLOAD_TESTS: "1"
+      CDS_API_TOKEN: ${{ secrets.CDS_API_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install package and test dependencies
+        run: |
+          pip install --upgrade pip
+          pip install ".[dev]" pytest-timeout
+
+      - name: Run live-service / download tests
+        run: |
+          pytest tests/test_downloads.py -m download -v --timeout=600

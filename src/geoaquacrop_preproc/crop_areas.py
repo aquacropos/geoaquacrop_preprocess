@@ -1,5 +1,5 @@
 import os
-from preproc_tools import spam_refyear, preproc_spam, makedirs, download_url, unzip_all
+from .preproc_tools import spam_refyear, preproc_spam, makedirs, download_url, unzip_all
 
 
 def crop_areas(domain_path, spam_variable, start_year, end_year, basepath, to_match, mask=None):

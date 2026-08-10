@@ -1,5 +1,5 @@
 """
-This script takes user-defined information (domain and time period to be modelled) and downloads and prepares all data needed for running AquaCropGrid
+This script takes user-defined information (domain and time period to be modelled) and downloads and prepares all data needed for running GeoAquaCrop
 User inputs:
     - path to a vector polygon file (shape) representing the model domain
     - time period to me modelled (start year and end year)
@@ -17,15 +17,15 @@ Script generates preprocessed datasets (grids) containing:
 
 import os
 import geopandas as gpd
-from preproc_tools import basegrid
-from validate_inputs import validate_inputs
+from .preproc_tools import basegrid
+from .validate_inputs import validate_inputs
 # import pdb
 
 ## INPUT ARGUMENTS. REPLACE THESE WITH YOUR OWN VALUES
 # Output directory: all rawdata and processed files are written here
 workingdirectory = '/Users/ritterj1/PythonProjects/aquagropgrid-preproc_niedersachsen-streamlined'
 # Domain: absolute path so the script can be run from any directory
-domain_path = '/Users/ritterj1/PythonProjects/aquacropgrid-preproc/inputdata/germany/niedersachsen.geojson'
+domain_path = '/Users/ritterj1/PythonProjects/geoaquacrop-preproc-dev/inputdata/germany/niedersachsen.geojson'
 #domain_path = os.path.join(os.getcwd(), 'inputdata', 'mekong', 'basin_outline', 'mekong_jrc_outline.geojson')
 start_year = 2030
 end_year = 2031
@@ -38,7 +38,7 @@ nasanex_scenario = 'ssp245'     # SSP scenario for years >= 2015: 'ssp126', 'ssp
 nasanex_ensemble = 'r1i1p1f1'   # ensemble member (check catalog for model-specific members)
 
 ##
-def aquacropgrid_preproc(domain_shape_path, start_year, end_year, api_token, cell_resolution=0.05, preprocess=['soil', 'crop_areas', 'cropcalendar', 'climate'],
+def geoaquacrop_preproc(domain_shape_path, start_year, end_year, api_token, cell_resolution=0.05, preprocess=['soil', 'crop_areas', 'cropcalendar', 'climate'],
                         nasanex_model='GFDL-CM4', nasanex_scenario='ssp245', nasanex_ensemble='r1i1p1f1', workingdirectory=None):
     if workingdirectory is None:
         workingdirectory = os.getcwd()
@@ -55,12 +55,12 @@ def aquacropgrid_preproc(domain_shape_path, start_year, end_year, api_token, cel
 
     # Download and preprocess soil data from ISRIC Soilgrids
     if 'soil' in preprocess:
-        from soil import soil
+        from .soil import soil
         soil(domain_shape_path, cell_resolution, workingdirectory, templategrid_path, mask=mask, to_match=to_match)
 
     # Download and preprocess crop areas (crop mask) and crop yield from SPAM data (https://www.mapspam.info/)
     if 'crop_areas' in preprocess:
-        from crop_areas import crop_areas
+        from .crop_areas import crop_areas
         spam_variable = 'physical_area' # crop masks, seperately for rainfed and irrigated areas
         crop_areas(domain_shape_path, spam_variable, start_year, end_year, workingdirectory, to_match, mask=mask)
         # spam_variable = 'yield' # crop yields, seperately for rainfed and irrigated areas. Used only for calibration and/or validation
@@ -68,7 +68,7 @@ def aquacropgrid_preproc(domain_shape_path, start_year, end_year, api_token, cel
 
     # Download and preprocess crop calendar from GGCMI (https://zenodo.org/records/5062513)
     if 'cropcalendar' in preprocess:
-        from cropcalendar_module import cropcalendar 
+        from .cropcalendar_module import cropcalendar 
         cropcalendar(domain_shape_path, workingdirectory, templategrid_path, mask=mask, to_match=to_match)
 
     # Download and preprocess climate data.
@@ -81,14 +81,15 @@ def aquacropgrid_preproc(domain_shape_path, start_year, end_year, api_token, cel
         AGERA5_START = 1979
         use_agera5 = (start_year >= AGERA5_START) and (end_year < current_year)
         if use_agera5:
-            from climate_AgERA5 import climate_AgERA5
+            from .climate_AgERA5 import climate_AgERA5
             climate_AgERA5(workingdirectory, start_year, end_year, api_token, to_match)
         else:
-            from climate_nasanex import climate_nasanex
+            from .climate_nasanex import climate_nasanex
             climate_nasanex(workingdirectory, start_year, end_year, to_match,
                             model=nasanex_model, scenario=nasanex_scenario, ensemble=nasanex_ensemble)
 
-## Run preprocessing
-aquacropgrid_preproc(domain_path, start_year, end_year, api_token, cell_resolution=cell_resolution, preprocess=['soil', 'crop_areas', 'cropcalendar', 'climate'],
-                     nasanex_model=nasanex_model, nasanex_scenario=nasanex_scenario, nasanex_ensemble=nasanex_ensemble,
-                     workingdirectory=workingdirectory)
+if __name__ == '__main__':
+    ## Run preprocessing
+    geoaquacrop_preproc(domain_path, start_year, end_year, api_token, cell_resolution=cell_resolution, preprocess=['soil', 'crop_areas', 'cropcalendar', 'climate'],
+                         nasanex_model=nasanex_model, nasanex_scenario=nasanex_scenario, nasanex_ensemble=nasanex_ensemble,
+                         workingdirectory=workingdirectory)

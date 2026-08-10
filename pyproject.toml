@@ -1,0 +1,47 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "geoaquacrop-preproc-dev"
+version = "0.1.0"
+description = "Automated data download and preprocessing pipeline for running FAO AquaCrop over large regions in gridded format"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.11"
+dependencies = [
+    "numpy",
+    "scipy",
+    "xarray",
+    "shapely",
+    "requests",
+    "geopandas",
+    "rasterio",
+    "pandas",
+    "cdsapi",
+    "netcdf4",
+    "rioxarray",
+    "owslib",
+    "soilgrids",
+    "dnspython",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-cov",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/geoaquacrop_preproc"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--strict-markers"
+markers = [
+    "download: marks tests that require live network access (deselect with '-m \"not download\"')",
+]
+
+[tool.coverage.run]
+source = ["src/geoaquacrop_preproc"]
+omit = ["*/tests/*"]

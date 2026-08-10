@@ -1,4 +1,4 @@
-# aquacropgrid-preproc
+# geoaquacrop-preproc-dev
 This work-in-progress repository creates an automatic data download, preprocessing, and harmonisation pipeline for global gridded datasets to serve as inputs to agricultural crop and irrigation models. More specifically, this covers all necessary data to run FAO's AquaCrop model over large regions (e.g. countries or river basins) in gridded format: 
 - Climate inputs (precipitation, temperature, reference evapotranspiration) in daily time step, both for past (from AgERA5) and future climate (from NASA NEX)
 - Soil properties (from ISRIC Soilgrids)
@@ -20,13 +20,13 @@ Conda: You'll need either Miniconda or Anaconda installed. Miniconda is generall
       - AgERA5: https://cds.climate.copernicus.eu/datasets/sis-agrometeorological-indicators?tab=download
 2. Clone this repository:
   - From command line (recommended), clone this repository to your local machine using Git (make sure you have Git installed on your system; you can download it from git-scm.com):
-      - git clone https://github.com/josiasritter/aquacropgrid-preproc 
+      - git clone https://github.com/josiasritter/geoaquacrop-preproc-dev 
   - Alternatively, manually download this repository to the desired location on your computer
 3. Navigate working directory to the newly created project directory (via command line):
-      - cd aquacropgrid-preproc
+      - cd geoaquacrop-preproc-dev
 4. Create a new conda environment and install the required packages (via command line):
       - conda env create -f environment.yml
-      - conda activate aquacropgrid-preproc
+      - conda activate geoaquacrop
 5. Run script “preproc_main.py”:
   - Manually adjust the input arguments at the top of the script and save the changes
   - Run in command line: python preproc_main.py
