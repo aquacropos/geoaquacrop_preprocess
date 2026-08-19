@@ -20,7 +20,13 @@ from shapely.geometry import mapping, box
 ## Download functions
 
 def download_url(url, download_path="./"):
-    """Download data from a given url to a given download path on the hard drive"""
+    """Download a file from a URL to disk, retrying silently on network errors.
+
+    Args:
+        url (str): URL of the file to download.
+        download_path (str): Local file path where the download is saved.
+            Defaults to ``"./"``.
+    """
     while True:
         try:
             response = requests.get(url, timeout=30)
@@ -35,7 +41,15 @@ def download_url(url, download_path="./"):
                 break
 
 def unzip_all(dir='.'):
-    """Iteratively unzip files in given directory and subdirectories until no zip files remain"""
+    """Recursively unzip all ZIP archives found under a directory.
+
+    Iterates until no ``.zip`` files remain. Each archive is extracted to a
+    subdirectory with the same stem as the archive, then the archive is deleted.
+
+    Args:
+        dir (str): Root directory to search for ZIP files. Defaults to the
+            current directory.
+    """
     zipfiles = True
     while bool(zipfiles):
         zipfiles = []
@@ -54,6 +68,24 @@ def unzip_all(dir='.'):
 
 ## Preprocessing functions
 def preproc_spam(basepath, download_dir, refyear, spam_variable, domain_path, to_match, mask=None):
+    """Reproject, clip, and merge SPAM GeoTIFF layers into a domain NetCDF.
+
+    Iterates over all per-crop GeoTIFF files in ``download_dir``, reprojects each
+    to the template grid using area-weighted resampling, clips to the model domain,
+    scales area values by the output-to-input pixel-area ratio, and merges all crop
+    layers into a single NetCDF file saved to ``<basepath>/processed/``.
+
+    Args:
+        basepath (str): Working directory.
+        download_dir (str): Directory containing the unzipped SPAM GeoTIFF files.
+        refyear (str): SPAM reference year string, either ``'2010'`` or ``'2020'``.
+        spam_variable (str): SPAM variable type. One of ``'physical_area'``,
+            ``'harvested_area'``, ``'production'``, or ``'yield'``.
+        domain_path (str): Path to the domain polygon file (EPSG:4326).
+        to_match (xarray.Dataset): Template raster that defines the output grid.
+        mask (geopandas.GeoDataFrame, optional): Pre-loaded domain GeoDataFrame.
+            If ``None``, it is read from ``domain_path``.
+    """
     if mask is None:
         mask = gpd.read_file(domain_path)
     to_match.rio.write_crs(4326, inplace=True)
@@ -128,6 +160,18 @@ def preproc_spam(basepath, download_dir, refyear, spam_variable, domain_path, to
     src_mosaic.to_netcdf(targetfile)
 
 def spam_refyear(start_year, end_year):
+    """Select the most appropriate SPAM reference year for a given period.
+
+    Chooses between available SPAM reference years (2010 or 2020) by selecting
+    the one closest to the midpoint of the modelling period.
+
+    Args:
+        start_year (int): First year of the modelling period.
+        end_year (int): Last year of the modelling period.
+
+    Returns:
+        str: The selected SPAM reference year, either ``'2010'`` or ``'2020'``.
+    """
     # Choose SPAM data reference year (available reference years are 2010 or 2020) according to average of start and end year of modelling horizon
     avg_year = np.mean([start_year, end_year])
     avg_year = np.ceil(avg_year)
@@ -139,6 +183,24 @@ def spam_refyear(start_year, end_year):
 
 ## Preprocessing climate data from AgERA5 (and soil water content from ERA5-Land but this is currently not supported as input to simulations)
 def preproc_agera5(src, variable, yearlist, basepath, to_match):
+    """Reproject, gap-fill, mask, and save an AgERA5 climate variable.
+
+    Renames variables and converts units to AquaCrop conventions, reprojects to
+    the template grid using nearest-neighbour resampling, fills spatial gaps via
+    nearest-neighbour interpolation, applies the domain mask, and writes the
+    result as a compressed NetCDF to ``<basepath>/processed/``.
+
+    Args:
+        src (xarray.Dataset): Merged multi-year AgERA5 dataset for one variable.
+        variable (str): AquaCrop variable name. One of ``'MinTemp'``,
+            ``'MaxTemp'``, ``'Precipitation'``, or ``'ReferenceET'``.
+        yearlist (list[int]): Years contained in ``src``; used to construct the
+            output filename.
+        basepath (str): Working directory; processed files are written to
+            ``<basepath>/processed/``.
+        to_match (xarray.Dataset): Template raster from :func:`basegrid`;
+            defines the output grid and domain mask.
+    """
     print("        *** PREPROCESSING CLIMATE DATA: " + variable + " ***")
 
     # Variable name definitions for changing to AquaCrop conventions
@@ -198,6 +260,18 @@ def preproc_agera5(src, variable, yearlist, basepath, to_match):
     src_masked.to_netcdf(targetfile, mode='w', encoding=encoding)
 
 def agera5_merge_yearly(target_dir, yearfile):
+    """Merge the daily NetCDF files from an AgERA5 yearly download into one file.
+
+    Expects the yearly ZIP to have already been extracted to a subdirectory
+    with the same stem as ``yearfile``. Opens all daily ``.nc`` files in that
+    folder, concatenates them along the time axis, writes the result to
+    ``yearfile``, and removes the unzipped folder to save disk space.
+
+    Args:
+        target_dir (str): Directory that contains the yearly ZIP and that will
+            receive the merged NetCDF.
+        yearfile (str): Target path for the merged yearly NetCDF file.
+    """
     import shutil
     unzip_all(target_dir)
     yearfolder = os.path.splitext(yearfile)[0]
@@ -217,21 +291,22 @@ def agera5_merge_yearly(target_dir, yearfile):
 ## Helper functions
 
 def safe_clip(src, mask):
-    """
-    Clip a raster (src) using geometries from mask, skipping polygons
-    that fall entirely in nodata regions or outside the raster extent.
+    """Clip a raster to polygon geometries, skipping nodata and out-of-extent polygons.
 
-    Parameters
-    ----------
-    src : rioxarray.DataArray
-        The source raster opened with rioxarray.
-    mask : geopandas.GeoDataFrame
-        Polygon(s) to clip with. Can be MultiPolygon.
+    Works with both :class:`xarray.DataArray` and :class:`xarray.Dataset` inputs.
+    Multi-part polygons are exploded and clipped individually; results are merged
+    with :meth:`xarray.Dataset.combine_first`.
 
-    Returns
-    -------
-    xarray.DataArray
-        Clipped raster with same CRS and structure as src.
+    Args:
+        src (xarray.Dataset or xarray.DataArray): Source raster with a CRS
+            assigned via ``rio.write_crs``.
+        mask (geopandas.GeoDataFrame): Polygon(s) to clip with. Can contain
+            Polygon or MultiPolygon geometries.
+
+    Returns:
+        xarray.Dataset or xarray.DataArray: Clipped raster with the same type,
+        CRS, and spatial structure as ``src``. If no polygon contained valid
+        data, returns an all-NaN copy of ``src``.
     """
     # Ensure CRS match
     if mask.crs != src.rio.crs:
@@ -282,7 +357,33 @@ def safe_clip(src, mask):
 
     return combined
 
-def basegrid(domain_shape_path, resolution, templategrid_path):    # Creates basic raster file as template for all preprocessing scripts (i.e. what is read in all other scripts as "to_match" file)
+def basegrid(domain_shape_path, resolution, templategrid_path):
+    """Create or load the template raster grid for a given domain polygon.
+
+    If the template file already exists it is loaded directly; otherwise a new
+    binary raster is created by rasterising the input polygon at the requested
+    resolution (cell value 1 inside polygon, 0 outside) and saved as a NetCDF
+    file. Coordinates follow the CF convention with descending latitudes.
+
+    Args:
+        domain_shape_path (str): Path to the domain polygon file (GeoJSON or
+            shapefile). Must be in EPSG:4326 and contain only Polygon or
+            MultiPolygon geometries.
+        resolution (float): Cell size in decimal degrees.
+        templategrid_path (str): File path where the template grid is saved
+            (created if absent, loaded if present).
+
+    Returns:
+        tuple:
+            - xarray.Dataset: Template raster with a single ``Band1`` variable
+              (1 = inside domain, 0 = outside) and ``x``/``y`` coordinates.
+            - list[float]: Bounding box ``[xmin, ymin, xmax, ymax]`` in decimal
+              degrees, rounded to the output resolution.
+
+    Raises:
+        Exception: If the input file contains non-polygon geometries or is not
+            in EPSG:4326.
+    """
     from rasterio.transform import from_origin
     from rasterio import features
     from affine import Affine
@@ -339,8 +440,20 @@ def basegrid(domain_shape_path, resolution, templategrid_path):    # Creates bas
 
     return ds, bounds
 
-# Ensures the dataset has 'x' and 'y' dimensions (for resampling in xarray)
 def ensure_xy_dims(ds):
+    """Rename spatial dimension names to the canonical ``'x'`` and ``'y'``.
+
+    Standardises ``'longitude'``/``'latitude'`` or ``'lon'``/``'lat'`` dimension
+    names to the ``'x'``/``'y'`` convention expected by rioxarray.
+
+    Args:
+        ds (xarray.Dataset or xarray.DataArray): Input dataset whose dimensions
+            may need renaming.
+
+    Returns:
+        xarray.Dataset or xarray.DataArray: Dataset with dimensions renamed to
+        ``'x'`` and ``'y'`` if applicable; unchanged otherwise.
+    """
     # Rename dimensions to 'x' and 'y' if they are named differently
     if 'longitude' in ds.dims and 'latitude' in ds.dims:
         ds = ds.rename({'longitude': 'x', 'latitude': 'y'})
@@ -349,6 +462,21 @@ def ensure_xy_dims(ds):
     return ds
 
 def makedirs(basepath, level1, level2):
+    """Create a two-level subdirectory structure and return the resulting path.
+
+    Constructs ``<basepath>/<level1>/<level2>`` (or ``<basepath>/<level1>``
+    when ``level2`` is falsy), creates all missing intermediate directories,
+    and returns the path.
+
+    Args:
+        basepath (str): Root working directory.
+        level1 (str): First subdirectory name.
+        level2 (str): Second subdirectory name, or an empty string to stop at
+            the first level.
+
+    Returns:
+        str: Absolute path to the created (or already-existing) directory.
+    """
     path = os.path.join(basepath, level1, level2) if level2 else os.path.join(basepath, level1)
     os.makedirs(path, exist_ok=True)
     return path

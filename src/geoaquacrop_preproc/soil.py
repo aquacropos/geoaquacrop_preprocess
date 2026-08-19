@@ -10,6 +10,28 @@ from .preproc_tools import makedirs, safe_clip
 
 
 def soil(domain_path, res, basepath, templategrid_path, mask=None, to_match=None):
+    """Download and preprocess ISRIC SoilGrids soil property data.
+
+    Downloads clay, sand, silt, and soil organic carbon content for all six
+    standard depth intervals (0–5, 5–15, 15–30, 30–60, 60–100, 100–200 cm) from
+    the ISRIC SoilGrids web coverage service. Each depth layer is reprojected to
+    the template grid, clipped to the model domain, and saved as a NetCDF file in
+    ``<basepath>/processed/``.
+
+    Args:
+        domain_path (str): Path to the domain polygon file (GeoJSON or shapefile,
+            EPSG:4326).
+        res (float): Output grid resolution in decimal degrees.
+        basepath (str): Working directory. Raw downloads go to
+            ``<basepath>/rawdata/soilgrids/`` and processed files to
+            ``<basepath>/processed/``.
+        templategrid_path (str): Path to the template raster NetCDF used to align
+            the output grid.
+        mask (geopandas.GeoDataFrame, optional): Pre-loaded domain GeoDataFrame.
+            If ``None``, it is read from ``domain_path``.
+        to_match (xarray.Dataset, optional): Pre-loaded template raster. If
+            ``None``, it is read from ``templategrid_path``.
+    """
 
     #import pdb # pdb.set_trace()
 

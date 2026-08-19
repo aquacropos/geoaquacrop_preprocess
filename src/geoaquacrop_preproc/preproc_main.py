@@ -40,6 +40,39 @@ nasanex_ensemble = 'r1i1p1f1'   # ensemble member (check catalog for model-speci
 ##
 def geoaquacrop_preproc(domain_shape_path, start_year, end_year, api_token, cell_resolution=0.05, preprocess=['soil', 'crop_areas', 'cropcalendar', 'climate'],
                         nasanex_model='GFDL-CM4', nasanex_scenario='ssp245', nasanex_ensemble='r1i1p1f1', workingdirectory=None):
+    """Run the full GeoAquaCrop preprocessing pipeline.
+
+    Downloads and preprocesses all input datasets required to run FAO AquaCrop
+    over large regions in gridded format for the specified domain and time period.
+    The climate source is selected automatically: AgERA5 reanalysis is used when
+    both years fall within its availability window (1979 to the previous complete
+    year), otherwise NASA NEX-GDDP-CMIP6 projections are used.
+
+    Args:
+        domain_shape_path (str): Path to a GeoJSON or shapefile polygon defining
+            the model domain. Must be in EPSG:4326 and contain only Polygon or
+            MultiPolygon geometries.
+        start_year (int): First year of the modelling period.
+        end_year (int): Last year of the modelling period (inclusive).
+        api_token (str): Personal API token from the Copernicus Climate Data
+            Store (https://cds.climate.copernicus.eu/). Required only when the
+            period falls within AgERA5 availability (1979 to last complete year).
+        cell_resolution (float): Output grid resolution in decimal degrees.
+            Default is ``0.05`` (≈ 3 arcmin). Note that most input datasets have
+            a coarser native resolution (e.g. 0.25° for NASA NEX climate data),
+            so increasing this beyond the native resolution has limited benefit.
+        preprocess (list[str]): Preprocessing steps to execute. Any subset of
+            ``['soil', 'crop_areas', 'cropcalendar', 'climate']``.
+        nasanex_model (str): CMIP6 model name used when downloading NASA
+            NEX-GDDP-CMIP6 projections. Default ``'GFDL-CM4'``.
+        nasanex_scenario (str): SSP scenario for years >= 2015. One of
+            ``'ssp126'``, ``'ssp245'``, ``'ssp370'``, ``'ssp585'``.
+            Default ``'ssp245'``.
+        nasanex_ensemble (str): Ensemble member identifier for the selected
+            CMIP6 model. Default ``'r1i1p1f1'``.
+        workingdirectory (str, optional): Root directory for all raw and
+            processed output. Defaults to the current working directory.
+    """
     if workingdirectory is None:
         workingdirectory = os.getcwd()
 

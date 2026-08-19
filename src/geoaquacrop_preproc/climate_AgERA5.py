@@ -1,11 +1,20 @@
 """
-This script downloads and prepocesses the following data from ERA5 and ERA5-Land:
-    - Four daily climate variables:
-        - Minimum temperature [K]
-        - Maximum temperature [K]
-        - Precipitation [m]
-        - Potential evapotranspiration [m]
-    - Soil moisture of initial time step [m3/m3]
+Download and preprocess AgERA5 agrometeorological climate data.
+
+Retrieves the following daily variables from the Copernicus Climate Data Store
+(CDS) for a specified domain and time period:
+
+- Minimum temperature [°C]
+- Maximum temperature [°C]
+- Precipitation [mm day⁻¹]
+- Reference evapotranspiration (FAO-56 Penman-Monteith) [mm day⁻¹]
+
+Downloads are split into yearly ZIP archives, each containing one ``.nc`` file
+per day. These are automatically merged into yearly NetCDF files and then
+combined and preprocessed into the final output files.
+
+Includes a DNS fallback mechanism for university networks that intercept
+port-53 DNS, using DNS-over-HTTPS (Cloudflare) to resolve the CDS hostname.
 """
 
 import xarray as xr
@@ -25,9 +34,15 @@ import requests
 
 # Set of functions to automatically overcome DNS-based errors, often found on university networks
 def force_resolve(ip, hostname="cds.climate.copernicus.eu"):
-    """
-    Force a specific hostname to resolve to a given IP address
-    inside Python, without touching system DNS.
+    """Monkey-patch Python's DNS resolver to map a hostname to a specific IP.
+
+    Overrides :func:`socket.getaddrinfo` so that all subsequent lookups of
+    ``hostname`` resolve to ``ip``, bypassing the system DNS entirely.
+
+    Args:
+        ip (str): IPv4 address to use for ``hostname``.
+        hostname (str): Hostname to override. Defaults to
+            ``'cds.climate.copernicus.eu'``.
     """
     print(f'Forcing resolve: {hostname} -> {ip}')
     orig_getaddrinfo = socket.getaddrinfo
@@ -41,9 +56,23 @@ def force_resolve(ip, hostname="cds.climate.copernicus.eu"):
  
  
 def resolve_via_doh(hostname="cds.climate.copernicus.eu", doh_url="https://cloudflare-dns.com/dns-query"):
-    """
-    Resolve hostname via DNS-over-HTTPS, bypassing any
-    port-53 interception by the university network.
+    """Resolve a hostname via DNS-over-HTTPS, bypassing system DNS.
+
+    Useful on networks where port-53 DNS is intercepted or filtered (e.g. some
+    university networks).
+
+    Args:
+        hostname (str): Hostname to resolve. Defaults to
+            ``'cds.climate.copernicus.eu'``.
+        doh_url (str): DNS-over-HTTPS endpoint to query. Defaults to the
+            Cloudflare resolver.
+
+    Returns:
+        str: First IPv4 address (A record) returned by the DoH resolver.
+
+    Raises:
+        RuntimeError: If no A records are found for ``hostname``.
+        requests.HTTPError: If the DoH request itself fails.
     """
     resp = requests.get(
         doh_url,
@@ -65,7 +94,17 @@ _dns_fallback_applied = False  # Module-level flag so we only apply the monkey-p
  
  
 def _is_dns_error(exc):
-    """Check whether an exception (or its chain) is a DNS resolution failure."""
+    """Return True if an exception (or any cause in its chain) is a DNS failure.
+
+    Walks the exception cause chain to detect :class:`socket.gaierror` or
+    string patterns associated with DNS resolution failures.
+
+    Args:
+        exc (Exception): The exception to inspect.
+
+    Returns:
+        bool: ``True`` if a DNS-related error is found, ``False`` otherwise.
+    """
     # Walk the cause chain — cdsapi wraps errors in requests exceptions
     current = exc
     while current is not None:
@@ -79,9 +118,25 @@ def _is_dns_error(exc):
  
  
 def retrieve_with_dns_fallback(client, dataset, request, target):
-    """
-    Wrapper around cdsapi retrieve that automatically falls back to
-    public DNS resolution if the university network can't resolve the CDS hostname.
+    """Wrap a CDS API retrieve call with automatic DNS fallback.
+
+    Attempts a normal :meth:`cdsapi.Client.retrieve` call. If it fails with a
+    DNS resolution error, resolves the CDS hostname via DNS-over-HTTPS, applies
+    a socket monkey-patch via :func:`force_resolve`, and retries once.
+
+    Args:
+        client (cdsapi.Client): Authenticated CDS API client instance.
+        dataset (str): CDS dataset identifier (e.g.
+            ``'sis-agrometeorological-indicators'``).
+        request (dict): CDS API request parameters.
+        target (str): Local file path where the downloaded data is saved.
+
+    Returns:
+        cdsapi.api.Result: The CDS result object returned by the retrieve call.
+
+    Raises:
+        Exception: Any non-DNS exception raised by the CDS client is re-raised
+            unchanged.
     """
     global _dns_fallback_applied
  
@@ -102,9 +157,15 @@ def retrieve_with_dns_fallback(client, dataset, request, target):
             raise  # Not a DNS problem — re-raise as-is
             
 def ensure_cds_dns(hostname="cds.climate.copernicus.eu"):
-    """
-    Check if the CDS hostname resolves via system DNS.
-    If not, fall back to public DNS and monkey-patch.
+    """Verify that the CDS hostname resolves, applying a DoH fallback if needed.
+
+    Performs a test DNS lookup for ``hostname``. If the system resolver fails,
+    calls :func:`resolve_via_doh` and patches the socket module via
+    :func:`force_resolve`.
+
+    Args:
+        hostname (str): Hostname to check. Defaults to
+            ``'cds.climate.copernicus.eu'``.
     """
     try:
         socket.getaddrinfo(hostname, 443)
@@ -117,6 +178,29 @@ def ensure_cds_dns(hostname="cds.climate.copernicus.eu"):
 
 # Continue with main script functionality
 def climate_AgERA5(basepath, start_year, end_year, api_token, to_match, variables=['MinTemp','MaxTemp','Precipitation','ReferenceET','InitSoilwater']):
+    """Download and preprocess AgERA5 daily climate data for a given area and period.
+
+    Retrieves minimum temperature, maximum temperature, precipitation, and reference
+    evapotranspiration from the AgERA5 dataset via the Copernicus CDS API. Data
+    are downloaded as yearly ZIP archives, merged into yearly NetCDF files, and then
+    combined and preprocessed to produce the final outputs on the project grid.
+
+    Args:
+        basepath (str): Working directory. Raw downloads go to
+            ``<basepath>/rawdata/climate/`` and processed files to
+            ``<basepath>/processed/``.
+        start_year (int): First year to download (AgERA5 is available from 1979).
+        end_year (int): Last year to download (inclusive; must be before the
+            current calendar year).
+        api_token (str): Personal API token from the Copernicus Climate Data
+            Store (https://cds.climate.copernicus.eu/).
+        to_match (xarray.Dataset): Template raster from
+            :func:`~geoaquacrop_preproc.preproc_tools.basegrid`; defines the
+            output grid and domain mask.
+        variables (list[str]): Climate variables to process. Defaults to
+            ``['MinTemp', 'MaxTemp', 'Precipitation', 'ReferenceET',
+            'InitSoilwater']``.
+    """
 
     ## Years to be downloaded
     yearlist = list(range(start_year, end_year+1))

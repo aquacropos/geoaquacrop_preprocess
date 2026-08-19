@@ -1,14 +1,21 @@
 def ricecalendar_marc(domain_path, basepath, referenceraster_path):
-    """
-    Download and preprocess the MARC (Map of Rice Cropping) rice calendar dataset
-    (Laborte et al. 2017; https://db.cger.nies.go.jp/nies_data/10.17595/20230728.001/).
+    """Download and preprocess the MARC rice calendar dataset.
 
-    Produces a NetCDF file with 12 layers:
-        3 rice growing seasons (PaddyRice1, PaddyRice2, PaddyRice3)
-        × 2 variables (planting DOY, growing_season_length)
-        × 2 irrigation techniques (rf = rainfed, ir = irrigated)
+    Downloads the Monsoon Asia Rice Calendar (MARC, https://essd.copernicus.org/articles/16/3893/2024/), reprojects to
+    the project grid, and saves a single merged NetCDF. Outputs contain 12 layers:
+    3 rice growing seasons (PaddyRice1, PaddyRice2, PaddyRice3) × 2 variables
+    (planting DOY and growing season length) × 2 irrigation modes (rainfed and
+    irrigated). Note that MARC does not distinguish rainfed from irrigated — the
+    ``rf`` and ``ir`` layers are identical.
 
-    Note: MARC does not distinguish rainfed/irrigated — rf and ir layers are identical.
+    Args:
+        domain_path (str): Path to the domain polygon file (GeoJSON or shapefile,
+            EPSG:4326).
+        basepath (str): Working directory. Raw downloads go to
+            ``<basepath>/rawdata/cropcalendar/marc_rice/`` and the processed file
+            is written to ``<basepath>/processed/ricecalendar_marc.nc``.
+        referenceraster_path (str): Path to the template raster NetCDF used to
+            align the output grid.
     """
 
     import os
