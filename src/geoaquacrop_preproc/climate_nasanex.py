@@ -52,18 +52,21 @@ _pattern_cache: dict = {}
 # ---------------------------------------------------------------------------
 
 def _discover_file_pattern(model, scenario, ensemble, variable):
-    """
-    Query the THREDDS catalog XML to discover the grid label and optional
-    version suffix used in the actual NetCDF filenames.
+    """Query the THREDDS catalog XML to discover the grid label and version suffix.
 
-    Different models use different grid labels (e.g. 'gn' vs 'gr1') and some
-    files carry a version suffix (e.g. '_v2.0').  This function fetches the
-    folder listing once and caches the result so subsequent calls are free.
+    Different models use different grid labels (e.g. ``'gn'`` vs ``'gr1'``) and
+    some files carry a version suffix (e.g. ``'_v2.0'``). This function fetches
+    the folder listing once and caches the result so subsequent calls are free.
 
-    Returns
-    -------
-    (grid, version_suffix) : (str, str)
-        e.g. ('gr1', '_v2.0') for GFDL-CM4, or ('gn', '') for ACCESS-CM2.
+    Args:
+        model (str): CMIP6 model name (e.g. ``'GFDL-CM4'``).
+        scenario (str): Scenario identifier (e.g. ``'historical'``, ``'ssp245'``).
+        ensemble (str): Ensemble member identifier (e.g. ``'r1i1p1f1'``).
+        variable (str): NEX-GDDP variable name (e.g. ``'tasmin'``).
+
+    Returns:
+        tuple[str, str]: A ``(grid, version_suffix)`` pair, e.g.
+        ``('gr1', '_v2.0')`` for GFDL-CM4 or ``('gn', '')`` for ACCESS-CM2.
     """
     key = (model, scenario, ensemble, variable)
     if key in _pattern_cache:
@@ -129,8 +132,25 @@ def _download_year(model, ssp, ensemble, variable, year,
     """
     Download one spatially-subsetted yearly file from THREDDS NCSS.
 
-    Returns the path to the local file (already downloaded or just saved).
-    Retries up to *max_retries* times on transient network errors.
+    Args:
+        model (str): CMIP6 model name.
+        ssp (str): SSP scenario for years >= 2015 (``'historical'`` is used
+            automatically for years <= 2014).
+        ensemble (str): Ensemble member identifier.
+        variable (str): NEX-GDDP variable name (e.g. ``'tasmin'``).
+        year (int): Year to download.
+        north (float): Northern bounding latitude [degrees].
+        west (float): Western bounding longitude [degrees].
+        south (float): Southern bounding latitude [degrees].
+        east (float): Eastern bounding longitude [degrees].
+        target_dir (str): Local directory where the file is saved.
+        max_retries (int): Maximum number of download attempts. Default ``5``.
+
+    Returns:
+        str: Path to the local file (already present or just downloaded).
+
+    Raises:
+        RuntimeError: If the download fails after ``max_retries`` attempts.
     """
     scenario = _scenario_for_year(year, ssp)
     local_fname = f"{variable}_{model}_{scenario}_{year}.nc"
@@ -172,23 +192,23 @@ def _download_year(model, ssp, ensemble, variable, year,
 # ---------------------------------------------------------------------------
 
 def _calc_et0_xr(tasmin, tasmax, hurs, rsds, wind10m, elev=0.0):
-    """
-    Compute daily FAO-56 Penman-Monteith reference ET₀ from xarray DataArrays.
+    """Compute daily FAO-56 Penman-Monteith reference ET₀ from xarray DataArrays.
 
-    All spatial DataArrays must share the same (time, y, x) dimensions; y must
-    represent latitude in degrees (EPSG:4326).
+    All spatial DataArrays must share the same ``(time, y, x)`` dimensions. The
+    ``y`` coordinate must represent latitude in decimal degrees (EPSG:4326).
 
-    Parameters
-    ----------
-    tasmin, tasmax : xr.DataArray  – near-surface temperature min/max [°C]
-    hurs           : xr.DataArray  – near-surface relative humidity [%]
-    rsds           : xr.DataArray  – surface downwelling shortwave [MJ m⁻² day⁻¹]
-    wind10m        : xr.DataArray  – wind speed at 10 m height [m s⁻¹]
-    elev           : float         – mean domain elevation [m a.s.l.]; default 0
+    Args:
+        tasmin (xr.DataArray): Near-surface minimum temperature [°C].
+        tasmax (xr.DataArray): Near-surface maximum temperature [°C].
+        hurs (xr.DataArray): Near-surface relative humidity [%].
+        rsds (xr.DataArray): Surface downwelling shortwave radiation
+            [MJ m⁻² day⁻¹].
+        wind10m (xr.DataArray): Wind speed at 10 m height [m s⁻¹].
+        elev (float): Mean domain elevation [m a.s.l.]. Default ``0``.
 
-    Returns
-    -------
-    et0 : xr.DataArray [mm day⁻¹], non-negative, named 'ReferenceET'
+    Returns:
+        xr.DataArray: Daily reference ET₀ [mm day⁻¹], non-negative, with
+        ``name='ReferenceET'``.
     """
     # Cast all inputs to float32 so intermediates stay in float32, halving memory vs float64
     f = np.float32
@@ -299,20 +319,26 @@ def _calc_et0_xr(tasmin, tasmax, hurs, rsds, wind10m, elev=0.0):
 # ---------------------------------------------------------------------------
 
 def _preproc_and_save(src, variable, yearlist, basepath, to_match, model, scenario, ensemble):
-    """
-    Reproject *src* to the project grid, gap-fill NaN, apply domain mask,
-    and write the result to processed/.
+    """Reproject, gap-fill, mask, and save a NASA NEX climate variable.
 
-    Parameters
-    ----------
-    src      : xr.Dataset with a single data variable named *variable*
-    variable : str  AquaCrop variable name (e.g. 'MaxTemp')
-    yearlist : list[int]
-    basepath : str
-    to_match : xr.Dataset  template raster from basegrid()
-    model    : str  CMIP6 model identifier (stored as file attribute)
-    scenario : str  SSP scenario identifier (stored as file attribute)
-    ensemble : str  ensemble member identifier (stored as file attribute)
+    Reprojects ``src`` to the project grid, fills spatial NaN gaps by
+    nearest-neighbour interpolation, applies the domain mask, and writes the
+    result as a compressed NetCDF to ``<basepath>/processed/``.
+
+    Args:
+        src (xr.Dataset): Dataset containing a single data variable named
+            ``variable``.
+        variable (str): AquaCrop variable name (e.g. ``'MaxTemp'``).
+        yearlist (list[int]): Years present in ``src``; used to name the output
+            file.
+        basepath (str): Working directory.
+        to_match (xr.Dataset): Template raster from :func:`basegrid`; defines
+            the output grid and domain mask.
+        model (str): CMIP6 model identifier stored as a global file attribute.
+        scenario (str): SSP scenario identifier stored as a global file
+            attribute.
+        ensemble (str): Ensemble member identifier stored as a global file
+            attribute.
     """
     print(f"        *** PREPROCESSING NASA NEX-GDDP-CMIP6: {variable} ***")
 
@@ -416,48 +442,40 @@ def climate_nasanex(
     variables=None,
     elev=0.0,
 ):
-    """
-    Download and preprocess NASA NEX-GDDP-CMIP6 daily climate projections for
-    a given area of interest and time period.
+    """Download and preprocess NASA NEX-GDDP-CMIP6 daily climate projections.
 
-    Parameters
-    ----------
-    basepath   : str
-        Working directory (must contain template_grid.nc).
-    start_year : int
-        First year to process.  Historical range: 1950–2014;
-        SSP range: 2015–2100.  Years across both ranges are handled
-        automatically.
-    end_year   : int
-        Last year to process (inclusive).
-    to_match   : xr.Dataset
-        Template raster returned by preproc_tools.basegrid(); defines the
-        output grid and domain mask.
-    model      : str
-        CMIP6 model name.  Default 'GFDL-CM4'.
-        Full list: https://ds.nccs.nasa.gov/thredds/catalog/AMES/NEX/GDDP-CMIP6/catalog.html
-        Commonly used models include: ACCESS-CM2, BCC-CSM2-MR, CESM2,
-        CMCC-CM2-SR5, GFDL-CM4, GFDL-ESM4, GISS-E2-1-G, MRI-ESM2-0.
-    scenario   : str
-        Greenhouse gas scenario for years >= 2015.
-        Options: 'ssp126', 'ssp245', 'ssp370', 'ssp585'.
-        Years <= 2014 always use the 'historical' scenario automatically.
-        Pass 'historical' explicitly if only downloading historical data.
-    ensemble   : str
-        Ensemble member identifier.  Default 'r1i1p1f1'.
-        Check the THREDDS catalog for the correct member for your model.
-    variables  : list[str] or None
-        Subset of ['MinTemp', 'MaxTemp', 'Precipitation', 'ReferenceET'].
-        Defaults to all four when None.
-    elev       : float
-        Representative elevation of the domain [m a.s.l.], used in the ET₀
-        atmospheric pressure term.  Default 0 m (sea level).
+    Fetches spatially-subsetted yearly files from the NCCS THREDDS server for
+    the selected CMIP6 model, reprojects to the project grid, and saves
+    processed NetCDF files for the requested climate variables.
 
-    Output files
-    ------------
-    Preprocessed NetCDF files are written to <basepath>/processed/ with names:
-        {variable}_{model}_{scenario}_{start_year}{end_year}.nc
-    Raw downloaded files are kept in <basepath>/rawdata/climate_nasanex/.
+    Args:
+        basepath (str): Working directory (must contain ``template_grid.nc``).
+        start_year (int): First year to process. Historical range 1950–2014 and
+            SSP range 2015–2100 are handled automatically.
+        end_year (int): Last year to process (inclusive).
+        to_match (xr.Dataset): Template raster from
+            :func:`~geoaquacrop_preproc.preproc_tools.basegrid`; defines the
+            output grid and domain mask.
+        model (str): CMIP6 model name. Default ``'GFDL-CM4'``. Commonly used
+            models include ACCESS-CM2, BCC-CSM2-MR, CESM2, CMCC-CM2-SR5,
+            GFDL-CM4, GFDL-ESM4, GISS-E2-1-G, and MRI-ESM2-0. Full list at
+            https://ds.nccs.nasa.gov/thredds/catalog/AMES/NEX/GDDP-CMIP6/catalog.html
+        scenario (str): Greenhouse gas scenario for years >= 2015. One of
+            ``'ssp126'``, ``'ssp245'``, ``'ssp370'``, ``'ssp585'``. Years
+            <= 2014 always use ``'historical'`` automatically. Pass
+            ``'historical'`` explicitly to restrict to historical data only.
+        ensemble (str): Ensemble member identifier. Default ``'r1i1p1f1'``.
+            Check the THREDDS catalog for the correct member for your model.
+        variables (list[str] or None): Subset of ``['MinTemp', 'MaxTemp',
+            'Precipitation', 'ReferenceET']``. Defaults to all four when
+            ``None``.
+        elev (float): Representative domain elevation [m a.s.l.], used in the
+            ET₀ atmospheric pressure term. Default ``0.0`` (sea level).
+
+    Note:
+        Preprocessed NetCDF files are written to ``<basepath>/processed/`` with
+        names ``{variable}{start_year}{end_year}.nc``. Raw downloaded files are
+        kept in ``<basepath>/rawdata/climate_nasanex/``.
     """
     if variables is None:
         variables = ['MinTemp', 'MaxTemp', 'Precipitation', 'ReferenceET']

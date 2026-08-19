@@ -4,6 +4,29 @@ from datetime import datetime
 
 
 def validate_inputs(domain_path, start_year, end_year, api_token):
+    """Validate user-supplied inputs before running the preprocessing pipeline.
+
+    Checks that the domain polygon file exists and contains valid Polygon or
+    MultiPolygon geometries in EPSG:4326, that the year range is plausible, and —
+    when AgERA5 is the selected climate source — that the API token is non-empty.
+    Prints informational messages about the detected climate data source and domain
+    extents.
+
+    Args:
+        domain_path (str): Path to the domain polygon file (GeoJSON or shapefile).
+        start_year (int): First year of the modelling period.
+        end_year (int): Last year of the modelling period (inclusive).
+        api_token (str): Copernicus CDS API token. Only validated when AgERA5 is
+            the selected climate source (i.e. 1979 <= start_year and end_year <
+            current year).
+
+    Raises:
+        FileNotFoundError: If ``domain_path`` does not exist on disk.
+        ValueError: If the file geometry type or CRS is invalid, or the year
+            range is outside the supported bounds (1950–2100).
+        TypeError: If ``start_year``, ``end_year``, or ``api_token`` has the
+            wrong type.
+    """
     # --- 1. Check that the input file exists ---
     if not os.path.exists(domain_path):
         raise FileNotFoundError(f"❌ The input file '{domain_path}' does not exist.")

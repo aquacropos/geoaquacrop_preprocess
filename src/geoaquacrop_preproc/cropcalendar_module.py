@@ -9,6 +9,27 @@ from .preproc_tools import download_url, unzip_all, ensure_xy_dims, makedirs, sa
 
 
 def cropcalendar(domain_path, basepath, referenceraster_path, mask=None, to_match=None):
+    """Download and preprocess GGCMI phase 3 crop calendar data.
+
+    Downloads planting day and growing season length for all GGCMI v1.01 crop
+    types (Jägermeyr et al., 2021; https://zenodo.org/records/5062513), reprojects
+    to the project grid, clips to the model domain, and saves a single merged NetCDF
+    file. Day-of-year 60 (Feb 29) is replaced by 61 (Mar 1) to avoid leap-year
+    artefacts.
+
+    Args:
+        domain_path (str): Path to the domain polygon file (GeoJSON or shapefile,
+            EPSG:4326).
+        basepath (str): Working directory. Raw downloads go to
+            ``<basepath>/rawdata/cropcalendar/`` and the processed file is written
+            to ``<basepath>/processed/cropcalendar.nc``.
+        referenceraster_path (str): Path to the template raster NetCDF used to
+            align the output grid.
+        mask (geopandas.GeoDataFrame, optional): Pre-loaded domain GeoDataFrame.
+            If ``None``, it is read from ``domain_path``.
+        to_match (xarray.Dataset, optional): Pre-loaded template raster. If
+            ``None``, it is read from ``referenceraster_path``.
+    """
 
     # For reprojecting and clipping
     if mask is None:

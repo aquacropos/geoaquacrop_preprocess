@@ -3,6 +3,31 @@ from .preproc_tools import spam_refyear, preproc_spam, makedirs, download_url, u
 
 
 def crop_areas(domain_path, spam_variable, start_year, end_year, basepath, to_match, mask=None):
+    """Download and preprocess SPAM crop area or yield data.
+
+    Downloads global gridded crop statistics from the Spatial Production Allocation
+    Model (SPAM), reprojects to the project grid, and clips to the model domain.
+    The most suitable SPAM reference year (2010 or 2020) is selected automatically
+    based on the midpoint of the modelling period.
+
+    Args:
+        domain_path (str): Path to the domain polygon file (GeoJSON or shapefile,
+            EPSG:4326).
+        spam_variable (str): Variable to download. One of ``'physical_area'``,
+            ``'harvested_area'``, ``'production'``, or ``'yield'``.
+        start_year (int): First year of the modelling period, used to select the
+            SPAM reference year.
+        end_year (int): Last year of the modelling period, used to select the
+            SPAM reference year.
+        basepath (str): Working directory. Raw downloads go to
+            ``<basepath>/rawdata/cropmasks/`` and processed files to
+            ``<basepath>/processed/``.
+        to_match (xarray.Dataset): Template raster from
+            :func:`~geoaquacrop_preproc.preproc_tools.basegrid`; defines the
+            output grid.
+        mask (geopandas.GeoDataFrame, optional): Pre-loaded domain GeoDataFrame.
+            If ``None``, it is read from ``domain_path``.
+    """
 
     # Define most suitable reference year of crop mask
     refyear = spam_refyear(start_year, end_year)
