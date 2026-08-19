@@ -23,9 +23,9 @@ from .validate_inputs import validate_inputs
 
 ## INPUT ARGUMENTS. REPLACE THESE WITH YOUR OWN VALUES
 # Output directory: all rawdata and processed files are written here
-workingdirectory = '/Users/ritterj1/PythonProjects/aquagropgrid-preproc_niedersachsen-streamlined'
+workingdirectory = '/Users/ritterj1/PythonProjects/geoaquacrop-preproc-dev'
 # Domain: absolute path so the script can be run from any directory
-domain_path = '/Users/ritterj1/PythonProjects/geoaquacrop-preproc-dev/inputdata/germany/niedersachsen.geojson'
+domain_path = '/Users/ritterj1/PythonProjects/geoaquacrop-preproc-dev/tests/test_inputdata.geojson'
 #domain_path = os.path.join(os.getcwd(), 'inputdata', 'mekong', 'basin_outline', 'mekong_jrc_outline.geojson')
 start_year = 2030
 end_year = 2031
