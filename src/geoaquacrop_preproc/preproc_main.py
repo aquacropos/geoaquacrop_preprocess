@@ -133,7 +133,7 @@ def geoaquacrop_preproc(domain_shape_path, start_year, end_year, api_token, cell
             climate_nasanex(workingdirectory, start_year, end_year, to_match,
                             model=nasanex_model, scenario=nasanex_scenario, ensemble=nasanex_ensemble)
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     ## Run preprocessing
     geoaquacrop_preproc(domain_path, start_year, end_year, api_token, cell_resolution=cell_resolution, preprocess=['soil', 'crop_areas', 'cropcalendar', 'climate'],
                          nasanex_model=nasanex_model, nasanex_scenario=nasanex_scenario, nasanex_ensemble=nasanex_ensemble,
