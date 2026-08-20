@@ -1,18 +1,30 @@
 """
-This script takes user-defined information (domain and time period to be modelled) and downloads and prepares all data needed for running GeoAquaCrop
-User inputs:
-    - path to a vector polygon file (shape) representing the model domain
-    - time period to me modelled (start year and end year)
-    - desired cell resolution (default 3 arcmin = 0.05 degrees latitude/longitude). Higher resolution may be possible for smaller domains, but keep in mind that the spatial resolution of most input datasets is quite coarse (e.g. 0.25 degrees for future climate data), so higher resolution may not always be useful and may lead to longer processing times and larger file sizes.
-    - personal api token from the Copernicus Climate Data Store (https://cds.climate.copernicus.eu/)
-Script generates preprocessed datasets (grids) containing:
-    - Climate data in daily time step (precipitation, evapotranspiration, minimum temperature, maximum temperature, and initial soil moisture).
-      Source is chosen automatically based on the requested time period:
-        * Both start_year and end_year are in the past (< current year): AgERA5 reanalysis via Copernicus CDS
-        * end_year is in the future (>= current year): NASA NEX-GDDP-CMIP6 climate projections
-    - Soil data (content of clay, sand, silt, and soil organic matter) for six soil depth layers from ISCRIC Soilgrids data
-    - Crop planting and harvesting calendars (for all supported crop types) from GGCMI data
-    - Crop cultivation areas (for all supported crop types) from SPAM data
+GeoAquaCrop preprocessing pipeline — main entry point.
+
+Takes user-defined inputs (domain polygon, time period, resolution, and API
+credentials) and downloads and prepares all datasets needed to run GeoAquaCrop.
+
+Required inputs:
+
+- Path to a vector polygon file (GeoJSON or shapefile) representing the model
+  domain (EPSG:4326).
+- Time period to model: ``start_year`` and ``end_year``.
+- Desired cell resolution in decimal degrees (default 0.05° ≈ 3 arcmin). Higher resolution may be possible for smaller domains, but keep in mind that the spatial resolution of most input datasets is quite coarse (e.g. 0.25 degrees for future climate data), so higher resolution may not always be useful and may lead to longer processing times and larger file sizes.
+- Copernicus CDS API token (only required for AgERA5 past climate data).
+
+Generated output datasets:
+
+- **Climate** — daily precipitation, reference ET, minimum and maximum
+  temperature. Source is selected automatically:
+
+  - Both years in the past (< current year): AgERA5 reanalysis via Copernicus CDS.
+  - ``end_year`` in the future (≥ current year): NASA NEX-GDDP-CMIP6 projections.
+
+- **Soil** — clay, sand, silt, and soil organic matter for six depth layers
+  (ISRIC SoilGrids).
+- **Crop calendar** — planting day and growing season length for all supported
+  crop types (GGCMI).
+- **Crop areas** — cultivated areas per crop type and irrigation mode (SPAM).
 """
 
 import os

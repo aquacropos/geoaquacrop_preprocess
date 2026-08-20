@@ -32,6 +32,10 @@ dev = [
     "pytest",
     "pytest-cov",
 ]
+docs = [
+    "sphinx>=7",
+    "furo",
+]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/geoaquacrop_preproc"]

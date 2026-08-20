@@ -260,7 +260,9 @@ def ricecalendar_marc(domain_path, basepath, referenceraster_path):
         if var != 'spatial_ref':
             print(f"  {var}")
 
-domain_path = '/Users/ritterj1/PythonProjects/geoaquacrop-preproc-dev/inputdata/mekong/basin_outline/mekong_jrc_outline.geojson'
-basepath = '/Users/ritterj1/PythonProjects/geoaquacrop-preproc-dev'
-referenceraster_path = '/Users/ritterj1/PythonProjects/geoaquacrop-preproc-dev/template_grid.nc'
-ricecalendar_marc(domain_path, basepath, referenceraster_path)
+
+if __name__ == '__main__':
+    domain_path = '/Users/ritterj1/PythonProjects/geoaquacrop-preproc-dev/inputdata/mekong/basin_outline/mekong_jrc_outline.geojson'
+    basepath = '/Users/ritterj1/PythonProjects/geoaquacrop-preproc-dev'
+    referenceraster_path = '/Users/ritterj1/PythonProjects/geoaquacrop-preproc-dev/template_grid.nc'
+    ricecalendar_marc(domain_path, basepath, referenceraster_path)

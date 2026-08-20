@@ -46,3 +46,6 @@ aquacrop_showcase/
 
 # Misc
 *.aux.xml
+
+# Sphinx docs build output
+docs/_build/

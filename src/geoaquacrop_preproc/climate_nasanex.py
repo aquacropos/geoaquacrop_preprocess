@@ -1,33 +1,32 @@
 """
-This script downloads and preprocesses the following daily climate projection data
-from NASA NEX-GDDP-CMIP6:
-    - Minimum temperature [°C]           (tasmin)
-    - Maximum temperature [°C]           (tasmax)
-    - Precipitation [mm/day]             (pr)
-    - Reference evapotranspiration       computed from tasmin, tasmax, hurs,
-      [mm/day, FAO-56 Penman-Monteith]   rsds, and sfcWind via the FAO-56 PM eq.
+Download and preprocess NASA NEX-GDDP-CMIP6 daily climate projections.
 
-Data source: https://www.nccs.nasa.gov/data-collections/nex-gddp-cmip6/
+Processed output variables (AquaCrop conventions):
+
+- **MinTemp** — daily minimum near-surface temperature [°C] (from ``tasmin``)
+- **MaxTemp** — daily maximum near-surface temperature [°C] (from ``tasmax``)
+- **Precipitation** — daily total precipitation [mm day⁻¹] (from ``pr``)
+- **ReferenceET** — FAO-56 Penman-Monteith reference ET₀ [mm day⁻¹], computed
+  from ``tasmin``, ``tasmax``, ``hurs``, ``rsds``, and ``sfcWind``
+
+Data source: https://www.nccs.nasa.gov/data-collections/nex-gddp-cmip6
+
 Spatial subsets are fetched via the NCCS THREDDS NetCDF Subset Service (NCSS);
 no authentication or AWS CLI is required.
 
-How historical / SSP splitting works
---------------------------------------
-NEX-GDDP-CMIP6 stores 1950-2014 under the 'historical' scenario and 2015-2100
-under the chosen SSP. This script automatically fetches the correct scenario for
-each year: years <= 2014 always use 'historical', years >= 2015 use the scenario
-argument.  If scenario='historical' is passed explicitly, all years must be <= 2014.
+Historical / SSP year splitting
+--------------------------------
+NEX-GDDP-CMIP6 stores 1950-2014 under the ``'historical'`` scenario and
+2015-2100 under the chosen SSP. Years across both ranges are handled
+automatically: years ≤ 2014 always use ``'historical'``, years ≥ 2015 use
+the ``scenario`` argument.
 
 Unit conversions applied
-------------------------
-    pr       : kg m⁻² s⁻¹  →  mm day⁻¹  (× 86400)
-    tasmin   : K             →  °C        (− 273.15)
-    tasmax   : K             →  °C        (− 273.15)
-    rsds     : W m⁻²        →  MJ m⁻² day⁻¹  (× 0.0864)
-    sfcWind  : m s⁻¹ at 10 m  →  m s⁻¹ at 2 m  (FAO-56 Eq. 47)
-
-See https://ds.nccs.nasa.gov/thredds/catalog/AMES/NEX/GDDP-CMIP6/catalog.html
-for the full list of available models and their ensemble members.
+-------------------------
+- ``pr`` : kg m⁻² s⁻¹ → mm day⁻¹ (× 86400)
+- ``tasmin`` / ``tasmax`` : K → °C (− 273.15)
+- ``rsds`` : W m⁻² → MJ m⁻² day⁻¹ (× 0.0864)
+- ``sfcWind`` : m s⁻¹ at 10 m → m s⁻¹ at 2 m (FAO-56 Eq. 47)
 """
 
 import os
