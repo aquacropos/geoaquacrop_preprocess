@@ -105,14 +105,3 @@ def validate_inputs(domain_path, start_year, end_year, api_token):
 
     print("✅ All input checks passed successfully.")
 
-
-if __name__ == '__main__':
-    # ----------------------------
-    # Example Inputs
-    # ----------------------------
-    workingdirectory = '/path/to/your/workingdir'
-    domain_path = os.path.join(workingdirectory, 'inputdata', 'spain', 'galicia.geojson')
-    start_year = 2014
-    end_year = 2015
-    api_token = 'xx'
-    validate_inputs(domain_path, start_year, end_year, api_token)
