@@ -1,4 +1,4 @@
-# geoaquacrop-preprocess
+# geoaquacrop.preprocess
 
 > Automated data download and preprocessing pipeline for running FAO AquaCrop over large regions in gridded format.
 
@@ -7,7 +7,7 @@
 
 ## Overview
 
-**geoaquacrop-preprocess** prepares all spatial input datasets required to run the [FAO AquaCrop](https://www.fao.org/aquacrop) crop water productivity model over large regions (e.g. river basins, countries) in a gridded setup. Given a polygon defining the area of interest and a time period, the pipeline automatically downloads, reprojects, and harmonises the following datasets onto a common output grid:
+**geoaquacrop.preprocess** prepares all spatial input datasets required to run the [FAO AquaCrop](https://www.fao.org/aquacrop) crop water productivity model over large regions (e.g. river basins, countries) in a gridded setup. Given a polygon defining the area of interest and a time period, the pipeline automatically downloads, reprojects, and harmonises the following datasets onto a common output grid:
 
 | Dataset | Variables | Source | Native resolution |
 |---------|-----------|--------|-------------------|
@@ -37,8 +37,8 @@ Barley, Cassava, Cotton, Dry Bean, Maize, Paddy Rice (seasons 1 & 2), Potato, So
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/josiasritter/geoaquacrop-preprocess-dev
-   cd geoaquacrop-preprocess-dev
+   git clone https://github.com/josiasritter/geoaquacrop.preprocess
+   cd geoaquacrop.preprocess
    ```
 
 2. **Create and activate the conda environment:**
@@ -113,7 +113,7 @@ Raw downloaded files are kept in `<workingdirectory>/rawdata/` as resumable chec
 | Parameter | Default | Description |
 |-----------|---------|-------------|
 | `cell_resolution` | `0.05` | Output grid cell size in decimal degrees |
-| `preprocessess` | all steps | Steps to run: `'soil'`, `'crop_areas'`, `'cropcalendar'`, `'climate'` |
+| `preprocess` | all steps | Steps to run: `'soil'`, `'crop_areas'`, `'cropcalendar'`, `'climate'` |
 | `nasanex_model` | `'GFDL-CM4'` | CMIP6 model name (see [catalog](https://ds.nccs.nasa.gov/thredds/catalog/AMES/NEX/GDDP-CMIP6/catalog.html)) |
 | `nasanex_scenario` | `'ssp245'` | SSP scenario for years >= 2015 |
 | `nasanex_ensemble` | `'r1i1p1f1'` | Ensemble member identifier |

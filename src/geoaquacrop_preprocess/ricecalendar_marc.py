@@ -1,5 +1,5 @@
 def ricecalendar_marc(domain_path, basepath, referenceraster_path):
-    """Download and preprocessess the MARC rice calendar dataset.
+    """Download and preprocess the MARC rice calendar dataset.
 
     Downloads the Monsoon Asia Rice Calendar (MARC, https://essd.copernicus.org/articles/16/3893/2024/), reprojects to
     the project grid, and saves a single merged NetCDF. Outputs contain 12 layers:
@@ -262,7 +262,7 @@ def ricecalendar_marc(domain_path, basepath, referenceraster_path):
 
 
 if __name__ == '__main__':
-    domain_path = '/Users/ritterj1/PythonProjects/geoaquacrop-preprocess-dev/inputdata/mekong/basin_outline/mekong_jrc_outline.geojson'
-    basepath = '/Users/ritterj1/PythonProjects/geoaquacrop-preprocess-dev'
-    referenceraster_path = '/Users/ritterj1/PythonProjects/geoaquacrop-preprocess-dev/template_grid.nc'
+    domain_path = '/Users/ritterj1/PythonProjects/geoaquacrop.preprocess/inputdata/mekong/basin_outline/mekong_jrc_outline.geojson'
+    basepath = '/Users/ritterj1/PythonProjects/geoaquacrop.preprocess'
+    referenceraster_path = '/Users/ritterj1/PythonProjects/geoaquacrop.preprocess/template_grid.nc'
     ricecalendar_marc(domain_path, basepath, referenceraster_path)

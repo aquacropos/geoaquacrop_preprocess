@@ -1,5 +1,5 @@
 """
-Live-service / download tests for geoaquacrop-preprocess-dev.
+Live-service / download tests for geoaquacrop.preprocess.
 
 These tests hit real external APIs and download actual data.
 They are intentionally kept separate and are only executed when the
@@ -44,7 +44,7 @@ def _require_env(name: str) -> str:
 # ---------------------------------------------------------------------------
 
 def test_soil_download(test_polygon_path, tmp_path):
-    """Download and preprocessess ISRIC SoilGrids data for the test polygon."""
+    """Download and preprocess ISRIC SoilGrids data for the test polygon."""
     from geoaquacrop_preprocess.preprocess_tools import basegrid
     from geoaquacrop_preprocess.soil import soil
 
@@ -63,7 +63,7 @@ def test_soil_download(test_polygon_path, tmp_path):
 # ---------------------------------------------------------------------------
 
 def test_cropcalendar_download(test_polygon_path, tmp_path):
-    """Download and preprocessess the GGCMI crop calendar for the test polygon."""
+    """Download and preprocess the GGCMI crop calendar for the test polygon."""
     from geoaquacrop_preprocess.preprocess_tools import basegrid
     from geoaquacrop_preprocess.cropcalendar_module import cropcalendar
 
@@ -82,7 +82,7 @@ def test_cropcalendar_download(test_polygon_path, tmp_path):
 # ---------------------------------------------------------------------------
 
 def test_crop_areas_download(test_polygon_path, tmp_path):
-    """Download and preprocessess SPAM crop areas for the test polygon."""
+    """Download and preprocess SPAM crop areas for the test polygon."""
     from geoaquacrop_preprocess.preprocess_tools import basegrid
     from geoaquacrop_preprocess.crop_areas import crop_areas
 
@@ -107,7 +107,7 @@ def test_crop_areas_download(test_polygon_path, tmp_path):
 # ---------------------------------------------------------------------------
 
 def test_climate_nasanex_download(test_polygon_path, tmp_path):
-    """Download and preprocessess NASA NEX climate data for the test polygon."""
+    """Download and preprocess NASA NEX climate data for the test polygon."""
     from geoaquacrop_preprocess.preprocess_tools import basegrid
     from geoaquacrop_preprocess.climate_nasanex import climate_nasanex
 
@@ -133,7 +133,7 @@ def test_climate_nasanex_download(test_polygon_path, tmp_path):
 # ---------------------------------------------------------------------------
 
 def test_climate_agera5_download(test_polygon_path, tmp_path):
-    """Download and preprocessess AgERA5 climate data for the test polygon.
+    """Download and preprocess AgERA5 climate data for the test polygon.
 
     Requires the CDS_API_TOKEN environment variable to be set with a valid
     Copernicus Climate Data Store token.

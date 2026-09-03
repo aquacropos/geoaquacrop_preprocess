@@ -25,7 +25,7 @@ copyright = "2026, Josias Ritter"
 #   - Host on Read the Docs, which handles versioning automatically via the
 #     .readthedocs.yaml file at the repository root.
 try:
-    release = importlib.metadata.version("geoaquacrop-preprocess-dev")
+    release = importlib.metadata.version("geoaquacrop.preprocess")
 except importlib.metadata.PackageNotFoundError:
     release = "0.1.0"
 version = ".".join(release.split(".")[:2])  # short X.Y version shown in sidebar

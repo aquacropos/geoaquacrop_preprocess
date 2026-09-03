@@ -1,5 +1,5 @@
 """
-geoaquacrop-preprocess-dev: Automated data download and preprocessing pipeline
+geoaquacrop.preprocess: Automated data download and preprocessing pipeline
 for running FAO AquaCrop over large regions in gridded format.
 """
 

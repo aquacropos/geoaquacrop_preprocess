@@ -3,7 +3,7 @@ from .preprocess_tools import spam_refyear, preprocess_spam, makedirs, download_
 
 
 def crop_areas(domain_path, spam_variable, start_year, end_year, basepath, to_match, mask=None):
-    """Download and preprocessess SPAM crop area or yield data.
+    """Download and preprocess SPAM crop area or yield data.
 
     Downloads global gridded crop statistics from the Spatial Production Allocation
     Model (SPAM), reprojects to the project grid, and clips to the model domain.

@@ -22,7 +22,7 @@ _MOCK_TARGET = "geoaquacrop_preprocess.preprocess_main"
 _CURRENT_YEAR = datetime.date.today().year
 
 
-def _run_with_mocks(test_polygon_path, tmp_path, preprocessess, start_year=2030, end_year=2031,
+def _run_with_mocks(test_polygon_path, tmp_path, preprocess, start_year=2030, end_year=2031,
                     api_token="dummy", extra_kwargs=None):
     """Call geoaquacrop_preprocess with all sub-module functions patched out."""
     mock_to_match = MagicMock()
@@ -38,7 +38,7 @@ def _run_with_mocks(test_polygon_path, tmp_path, preprocessess, start_year=2030,
         patch("geoaquacrop_preprocess.climate_nasanex.climate_nasanex"),
     ]
 
-    kwargs = dict(preprocessess=preprocessess, workingdirectory=str(tmp_path))
+    kwargs = dict(preprocess=preprocess, workingdirectory=str(tmp_path))
     if extra_kwargs:
         kwargs.update(extra_kwargs)
 
@@ -62,14 +62,14 @@ def _run_with_mocks(test_polygon_path, tmp_path, preprocessess, start_year=2030,
 # ---------------------------------------------------------------------------
 
 def test_preprocess_main_calls_validate_inputs(test_polygon_path, tmp_path):
-    mocks = _run_with_mocks(test_polygon_path, tmp_path, preprocessess=[])
+    mocks = _run_with_mocks(test_polygon_path, tmp_path, preprocess=[])
     mocks["validate"].assert_called_once_with(
         test_polygon_path, 2030, 2031, "dummy"
     )
 
 
 def test_preprocess_main_calls_basegrid(test_polygon_path, tmp_path):
-    mocks = _run_with_mocks(test_polygon_path, tmp_path, preprocessess=[])
+    mocks = _run_with_mocks(test_polygon_path, tmp_path, preprocess=[])
     mocks["basegrid"].assert_called_once()
 
 
@@ -78,12 +78,12 @@ def test_preprocess_main_calls_basegrid(test_polygon_path, tmp_path):
 # ---------------------------------------------------------------------------
 
 def test_preprocess_main_soil_step_called(test_polygon_path, tmp_path):
-    mocks = _run_with_mocks(test_polygon_path, tmp_path, preprocessess=["soil"])
+    mocks = _run_with_mocks(test_polygon_path, tmp_path, preprocess=["soil"])
     mocks["soil"].assert_called_once()
 
 
 def test_preprocess_main_soil_not_called_when_not_requested(test_polygon_path, tmp_path):
-    mocks = _run_with_mocks(test_polygon_path, tmp_path, preprocessess=[])
+    mocks = _run_with_mocks(test_polygon_path, tmp_path, preprocess=[])
     mocks["soil"].assert_not_called()
 
 
@@ -92,12 +92,12 @@ def test_preprocess_main_soil_not_called_when_not_requested(test_polygon_path, t
 # ---------------------------------------------------------------------------
 
 def test_preprocess_main_crop_areas_called(test_polygon_path, tmp_path):
-    mocks = _run_with_mocks(test_polygon_path, tmp_path, preprocessess=["crop_areas"])
+    mocks = _run_with_mocks(test_polygon_path, tmp_path, preprocess=["crop_areas"])
     mocks["crop_areas"].assert_called_once()
 
 
 def test_preprocess_main_crop_areas_not_called_when_excluded(test_polygon_path, tmp_path):
-    mocks = _run_with_mocks(test_polygon_path, tmp_path, preprocessess=["soil"])
+    mocks = _run_with_mocks(test_polygon_path, tmp_path, preprocess=["soil"])
     mocks["crop_areas"].assert_not_called()
 
 
@@ -106,7 +106,7 @@ def test_preprocess_main_crop_areas_not_called_when_excluded(test_polygon_path, 
 # ---------------------------------------------------------------------------
 
 def test_preprocess_main_cropcalendar_called(test_polygon_path, tmp_path):
-    mocks = _run_with_mocks(test_polygon_path, tmp_path, preprocessess=["cropcalendar"])
+    mocks = _run_with_mocks(test_polygon_path, tmp_path, preprocess=["cropcalendar"])
     mocks["cropcalendar"].assert_called_once()
 
 
@@ -119,7 +119,7 @@ def test_preprocess_main_uses_agera5_for_historical_period(test_polygon_path, tm
     long_token = "a" * 40
     mocks = _run_with_mocks(
         test_polygon_path, tmp_path,
-        preprocessess=["climate"],
+        preprocess=["climate"],
         start_year=2005, end_year=_CURRENT_YEAR - 1,
         api_token=long_token,
     )
@@ -135,7 +135,7 @@ def test_preprocess_main_uses_nasanex_for_future_period(test_polygon_path, tmp_p
     """end_year in the future → NASA NEX."""
     mocks = _run_with_mocks(
         test_polygon_path, tmp_path,
-        preprocessess=["climate"],
+        preprocess=["climate"],
         start_year=2030, end_year=2050,
     )
     mocks["nasanex"].assert_called_once()
@@ -145,7 +145,7 @@ def test_preprocess_main_uses_nasanex_for_future_period(test_polygon_path, tmp_p
 def test_preprocess_main_nasanex_custom_model(test_polygon_path, tmp_path):
     mocks = _run_with_mocks(
         test_polygon_path, tmp_path,
-        preprocessess=["climate"],
+        preprocess=["climate"],
         start_year=2030, end_year=2050,
         extra_kwargs={"nasanex_model": "MPI-ESM1-2-HR",
                       "nasanex_scenario": "ssp585",
@@ -167,7 +167,7 @@ def test_preprocess_main_default_workingdir_is_cwd(test_polygon_path, tmp_path, 
           patch(f"{_MOCK_TARGET}.basegrid", return_value=(MagicMock(), [0, 0, 1, 1]))):
         # Pass workingdirectory=None explicitly (the default)
         geoaquacrop_preprocess(test_polygon_path, 2030, 2031, "dummy",
-                            preprocessess=[], workingdirectory=None)
+                            preprocess=[], workingdirectory=None)
     # If we reach here without raising, the default was accepted
 
 
@@ -179,7 +179,7 @@ def test_preprocess_main_all_steps_called(test_polygon_path, tmp_path):
     long_token = "a" * 40
     mocks = _run_with_mocks(
         test_polygon_path, tmp_path,
-        preprocessess=["soil", "crop_areas", "cropcalendar", "climate"],
+        preprocess=["soil", "crop_areas", "cropcalendar", "climate"],
         start_year=2005, end_year=_CURRENT_YEAR - 1,
         api_token=long_token,
     )

@@ -1,5 +1,5 @@
 """
-Download and preprocessess NASA NEX-GDDP-CMIP6 daily climate projections.
+Download and preprocess NASA NEX-GDDP-CMIP6 daily climate projections.
 
 Processed output variables (AquaCrop conventions):
 
@@ -339,7 +339,7 @@ def _preprocess_and_save(src, variable, yearlist, basepath, to_match, model, sce
         ensemble (str): Ensemble member identifier stored as a global file
             attribute.
     """
-    print(f"        *** PREPROCESSESSING NASA NEX-GDDP-CMIP6: {variable} ***")
+    print(f"        *** PREPROCESSING NASA NEX-GDDP-CMIP6: {variable} ***")
 
     src = ensure_xy_dims(src)
 
@@ -416,7 +416,7 @@ def _preprocess_and_save(src, variable, yearlist, basepath, to_match, model, sce
         'cmip6_model'    : model,
         'cmip6_scenario' : scenario,
         'cmip6_ensemble' : ensemble,
-        'history'     : f'Preprocessed on {datetime.date.today().isoformat()} by geoaquacrop-preprocess-dev.',
+        'history'     : f'Preprocessed on {datetime.date.today().isoformat()} by geoaquacrop.preprocess.',
         'references'  : 'https://www.nasa.gov/nex/gddp',
     }
 
@@ -441,7 +441,7 @@ def climate_nasanex(
     variables=None,
     elev=0.0,
 ):
-    """Download and preprocessess NASA NEX-GDDP-CMIP6 daily climate projections.
+    """Download and preprocess NASA NEX-GDDP-CMIP6 daily climate projections.
 
     Fetches spatially-subsetted yearly files from the NCCS THREDDS server for
     the selected CMIP6 model, reprojects to the project grid, and saves

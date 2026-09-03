@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "geoaquacrop-preprocess-dev"
+name = "geoaquacrop.preprocess"
 version = "0.1.0"
 description = "Automated data download and preprocessing pipeline for running FAO AquaCrop over large regions in gridded format"
 readme = "README.md"

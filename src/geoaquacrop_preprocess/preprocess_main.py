@@ -35,9 +35,9 @@ from .validate_inputs import validate_inputs
 
 ## INPUT ARGUMENTS. REPLACE THESE WITH YOUR OWN VALUES
 # Output directory: all rawdata and processed files are written here
-workingdirectory = '/Users/ritterj1/PythonProjects/geoaquacrop-preprocess-dev'
+workingdirectory = '/Users/ritterj1/PythonProjects/geoaquacrop.preprocess'
 # Domain: absolute path so the script can be run from any directory
-domain_path = '/Users/ritterj1/PythonProjects/geoaquacrop-preprocess-dev/tests/test_polygon.geojson'
+domain_path = '/Users/ritterj1/PythonProjects/geoaquacrop.preprocess/tests/test_polygon.geojson'
 #domain_path = os.path.join(os.getcwd(), 'inputdata', 'mekong', 'basin_outline', 'mekong_jrc_outline.geojson')
 start_year = 2030
 end_year = 2031
@@ -50,11 +50,11 @@ nasanex_scenario = 'ssp245'     # SSP scenario for years >= 2015: 'ssp126', 'ssp
 nasanex_ensemble = 'r1i1p1f1'   # ensemble member (check catalog for model-specific members)
 
 ##
-def geoaquacrop_preprocess(domain_shape_path, start_year, end_year, api_token, cell_resolution=0.05, preprocessess=['soil', 'crop_areas', 'cropcalendar', 'climate'],
+def geoaquacrop_preprocess(domain_shape_path, start_year, end_year, api_token, cell_resolution=0.05, preprocess=['soil', 'crop_areas', 'cropcalendar', 'climate'],
                         nasanex_model='GFDL-CM4', nasanex_scenario='ssp245', nasanex_ensemble='r1i1p1f1', workingdirectory=None):
     """Run the full GeoAquaCrop preprocessing pipeline.
 
-    Downloads and preprocessesses all input datasets required to run FAO AquaCrop
+    Downloads and preprocesses all input datasets required to run FAO AquaCrop
     over large regions in gridded format for the specified domain and time period.
     The climate source is selected automatically: AgERA5 reanalysis is used when
     both years fall within its availability window (1979 to the previous complete
@@ -73,7 +73,7 @@ def geoaquacrop_preprocess(domain_shape_path, start_year, end_year, api_token, c
             Default is ``0.05`` (≈ 3 arcmin). Note that most input datasets have
             a coarser native resolution (e.g. 0.25° for NASA NEX climate data),
             so increasing this beyond the native resolution has limited benefit.
-        preprocessess (list[str]): Preprocessing steps to execute. Any subset of
+        preprocess (list[str]): Preprocessing steps to execute. Any subset of
             ``['soil', 'crop_areas', 'cropcalendar', 'climate']``.
         nasanex_model (str): CMIP6 model name used when downloading NASA
             NEX-GDDP-CMIP6 projections. Default ``'GFDL-CM4'``.
@@ -98,29 +98,29 @@ def geoaquacrop_preprocess(domain_shape_path, start_year, end_year, api_token, c
     templategrid_path = os.path.join(workingdirectory, 'template_grid.nc')
     to_match, bounds = basegrid(domain_shape_path, cell_resolution, templategrid_path)
 
-    # Download and preprocessess soil data from ISRIC Soilgrids
-    if 'soil' in preprocessess:
+    # Download and preprocess soil data from ISRIC Soilgrids
+    if 'soil' in preprocess:
         from .soil import soil
         soil(domain_shape_path, cell_resolution, workingdirectory, templategrid_path, mask=mask, to_match=to_match)
 
-    # Download and preprocessess crop areas (crop mask) and crop yield from SPAM data (https://www.mapspam.info/)
-    if 'crop_areas' in preprocessess:
+    # Download and preprocess crop areas (crop mask) and crop yield from SPAM data (https://www.mapspam.info/)
+    if 'crop_areas' in preprocess:
         from .crop_areas import crop_areas
         spam_variable = 'physical_area' # crop masks, seperately for rainfed and irrigated areas
         crop_areas(domain_shape_path, spam_variable, start_year, end_year, workingdirectory, to_match, mask=mask)
         # spam_variable = 'yield' # crop yields, seperately for rainfed and irrigated areas. Used only for calibration and/or validation
         # crop_areas(domain_shape_path, spam_variable, start_year, end_year, workingdirectory, to_match, mask=mask)
 
-    # Download and preprocessess crop calendar from GGCMI (https://zenodo.org/records/5062513)
-    if 'cropcalendar' in preprocessess:
+    # Download and preprocess crop calendar from GGCMI (https://zenodo.org/records/5062513)
+    if 'cropcalendar' in preprocess:
         from .cropcalendar_module import cropcalendar 
         cropcalendar(domain_shape_path, workingdirectory, templategrid_path, mask=mask, to_match=to_match)
 
-    # Download and preprocessess climate data.
+    # Download and preprocess climate data.
     # Source selection:
     #   AgERA5 reanalysis  – both years within its availability window (1979 to last complete year)
     #   NASA NEX-GDDP-CMIP6 – any other case (start_year < 1979 or end_year >= current year)
-    if 'climate' in preprocessess:
+    if 'climate' in preprocess:
         import datetime
         current_year = datetime.date.today().year
         AGERA5_START = 1979
@@ -135,6 +135,6 @@ def geoaquacrop_preprocess(domain_shape_path, start_year, end_year, api_token, c
 
 if __name__ == '__main__':  # pragma: no cover
     ## Run preprocessing
-    geoaquacrop_preprocess(domain_path, start_year, end_year, api_token, cell_resolution=cell_resolution, preprocessess=['soil', 'crop_areas', 'cropcalendar', 'climate'],
+    geoaquacrop_preprocess(domain_path, start_year, end_year, api_token, cell_resolution=cell_resolution, preprocess=['soil', 'crop_areas', 'cropcalendar', 'climate'],
                          nasanex_model=nasanex_model, nasanex_scenario=nasanex_scenario, nasanex_ensemble=nasanex_ensemble,
                          workingdirectory=workingdirectory)

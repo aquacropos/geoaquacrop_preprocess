@@ -1,5 +1,5 @@
 """
-Download and preprocessess AgERA5 agrometeorological climate data.
+Download and preprocess AgERA5 agrometeorological climate data.
 
 Retrieves the following daily variables from the Copernicus Climate Data Store
 (CDS) for a specified domain and time period:
@@ -11,7 +11,7 @@ Retrieves the following daily variables from the Copernicus Climate Data Store
 
 Downloads are split into yearly ZIP archives, each containing one ``.nc`` file
 per day. These are automatically merged into yearly NetCDF files and then
-combined and preprocessessed into the final output files.
+combined and preprocessed into the final output files.
 
 Includes a DNS fallback mechanism for university networks that intercept
 port-53 DNS, using DNS-over-HTTPS (Cloudflare) to resolve the CDS hostname.
@@ -178,12 +178,12 @@ def ensure_cds_dns(hostname="cds.climate.copernicus.eu"):
 
 # Continue with main script functionality
 def climate_AgERA5(basepath, start_year, end_year, api_token, to_match, variables=['MinTemp','MaxTemp','Precipitation','ReferenceET','InitSoilwater']):
-    """Download and preprocessess AgERA5 daily climate data for a given area and period.
+    """Download and preprocess AgERA5 daily climate data for a given area and period.
 
     Retrieves minimum temperature, maximum temperature, precipitation, and reference
     evapotranspiration from the AgERA5 dataset via the Copernicus CDS API. Data
     are downloaded as yearly ZIP archives, merged into yearly NetCDF files, and then
-    combined and preprocessessed to produce the final outputs on the project grid.
+    combined and preprocessed to produce the final outputs on the project grid.
 
     Args:
         basepath (str): Working directory. Raw downloads go to

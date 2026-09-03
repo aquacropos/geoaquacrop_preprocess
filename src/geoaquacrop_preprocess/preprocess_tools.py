@@ -201,7 +201,7 @@ def preprocess_agera5(src, variable, yearlist, basepath, to_match):
         to_match (xarray.Dataset): Template raster from :func:`basegrid`;
             defines the output grid and domain mask.
     """
-    print("        *** PREPROCESSESSING CLIMATE DATA: " + variable + " ***")
+    print("        *** PREPROCESSING CLIMATE DATA: " + variable + " ***")
 
     # Variable name definitions for changing to AquaCrop conventions
     varname_dict = {'MinTemp': 'Temperature_Air_2m_Min_24h', 'MaxTemp': 'Temperature_Air_2m_Max_24h', 'Precipitation': 'Precipitation_Flux', 'ReferenceET': 'ReferenceET_PenmanMonteith_FAO56'}  # Names of data variables in AquaCrop and AgERA5 data, respectively

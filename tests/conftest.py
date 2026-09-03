@@ -1,5 +1,5 @@
 """
-Shared pytest fixtures for geoaquacrop-preprocess-dev tests.
+Shared pytest fixtures for geoaquacrop.preprocess tests.
 """
 
 import os
