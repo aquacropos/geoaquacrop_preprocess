@@ -50,8 +50,8 @@ nasanex_scenario = 'ssp245'     # SSP scenario for years >= 2015: 'ssp126', 'ssp
 nasanex_ensemble = 'r1i1p1f1'   # ensemble member (check catalog for model-specific members)
 
 ##
-def geoaquacrop_preprocess(domain_shape_path, start_year, end_year, api_token, cell_resolution=0.05, preprocess=['soil', 'crop_areas', 'cropcalendar', 'climate'],
-                        nasanex_model='GFDL-CM4', nasanex_scenario='ssp245', nasanex_ensemble='r1i1p1f1', workingdirectory=None):
+def run(domain_shape_path, start_year, end_year, api_token, cell_resolution=0.05, preprocess=['soil', 'crop_areas', 'crop_calendar', 'climate'],
+        nasanex_model='GFDL-CM4', nasanex_scenario='ssp245', nasanex_ensemble='r1i1p1f1', workingdirectory=None):
     """Run the full GeoAquaCrop preprocessing pipeline.
 
     Downloads and preprocesses all input datasets required to run FAO AquaCrop
@@ -74,7 +74,7 @@ def geoaquacrop_preprocess(domain_shape_path, start_year, end_year, api_token, c
             a coarser native resolution (e.g. 0.25° for NASA NEX climate data),
             so increasing this beyond the native resolution has limited benefit.
         preprocess (list[str]): Preprocessing steps to execute. Any subset of
-            ``['soil', 'crop_areas', 'cropcalendar', 'climate']``.
+            ``['soil', 'crop_areas', 'crop_calendar', 'climate']``.
         nasanex_model (str): CMIP6 model name used when downloading NASA
             NEX-GDDP-CMIP6 projections. Default ``'GFDL-CM4'``.
         nasanex_scenario (str): SSP scenario for years >= 2015. One of
@@ -112,7 +112,7 @@ def geoaquacrop_preprocess(domain_shape_path, start_year, end_year, api_token, c
         # crop_areas(domain_shape_path, spam_variable, start_year, end_year, workingdirectory, to_match, mask=mask)
 
     # Download and preprocess crop calendar from GGCMI (https://zenodo.org/records/5062513)
-    if 'cropcalendar' in preprocess:
+    if 'crop_calendar' in preprocess:
         from .cropcalendar_module import cropcalendar 
         cropcalendar(domain_shape_path, workingdirectory, templategrid_path, mask=mask, to_match=to_match)
 
@@ -133,8 +133,40 @@ def geoaquacrop_preprocess(domain_shape_path, start_year, end_year, api_token, c
             climate_nasanex(workingdirectory, start_year, end_year, to_match,
                             model=nasanex_model, scenario=nasanex_scenario, ensemble=nasanex_ensemble)
 
+
+# Old name kept as an alias so existing scripts don't break.
+geoaquacrop_preprocess = run
+
+
+def weather(domain_shape_path, start_year, end_year, api_token, cell_resolution=0.05,
+            nasanex_model='GFDL-CM4', nasanex_scenario='ssp245', nasanex_ensemble='r1i1p1f1',
+            workingdirectory=None):
+    """Download and preprocess climate data only. See `run` for argument details."""
+    return run(domain_shape_path, start_year, end_year, api_token, cell_resolution=cell_resolution,
+               preprocess=['climate'], nasanex_model=nasanex_model, nasanex_scenario=nasanex_scenario,
+               nasanex_ensemble=nasanex_ensemble, workingdirectory=workingdirectory)
+
+
+def soil(domain_shape_path, start_year, end_year, cell_resolution=0.05, workingdirectory=None):
+    """Download and preprocess soil data only. See `run` for argument details."""
+    return run(domain_shape_path, start_year, end_year, api_token='', cell_resolution=cell_resolution,
+               preprocess=['soil'], workingdirectory=workingdirectory)
+
+
+def crop_calendar(domain_shape_path, start_year, end_year, cell_resolution=0.05, workingdirectory=None):
+    """Download and preprocess crop calendar data only. See `run` for argument details."""
+    return run(domain_shape_path, start_year, end_year, api_token='', cell_resolution=cell_resolution,
+               preprocess=['crop_calendar'], workingdirectory=workingdirectory)
+
+
+def crop_area(domain_shape_path, start_year, end_year, cell_resolution=0.05, workingdirectory=None):
+    """Download and preprocess crop area data only. See `run` for argument details."""
+    return run(domain_shape_path, start_year, end_year, api_token='', cell_resolution=cell_resolution,
+               preprocess=['crop_areas'], workingdirectory=workingdirectory)
+
+
 if __name__ == '__main__':  # pragma: no cover
     ## Run preprocessing
-    geoaquacrop_preprocess(domain_path, start_year, end_year, api_token, cell_resolution=cell_resolution, preprocess=['soil', 'crop_areas', 'cropcalendar', 'climate'],
-                         nasanex_model=nasanex_model, nasanex_scenario=nasanex_scenario, nasanex_ensemble=nasanex_ensemble,
-                         workingdirectory=workingdirectory)
+    run(domain_path, start_year, end_year, api_token, cell_resolution=cell_resolution, preprocess=['soil', 'crop_areas', 'crop_calendar', 'climate'],
+        nasanex_model=nasanex_model, nasanex_scenario=nasanex_scenario, nasanex_ensemble=nasanex_ensemble,
+        workingdirectory=workingdirectory)

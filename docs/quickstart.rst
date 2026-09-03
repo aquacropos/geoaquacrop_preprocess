@@ -36,9 +36,9 @@ Option B — Python API
 
 .. code-block:: python
 
-   from geoaquacrop_preprocess import geoaquacrop_preprocess
+   from geoaquacrop_preprocess import run
 
-   geoaquacrop_preprocess(
+   run(
        domain_shape_path='domain.geojson',
        start_year=2020,
        end_year=2022,
@@ -46,6 +46,15 @@ Option B — Python API
        cell_resolution=0.05,
        workingdirectory='/path/to/output',
    )
+
+Individual steps can also be run directly, without building a ``preprocess`` list:
+
+.. code-block:: python
+
+   from geoaquacrop_preprocess import soil
+
+   soil(domain_shape_path='domain.geojson', start_year=2020, end_year=2022,
+        workingdirectory='/path/to/output')
 
 Output files
 ------------

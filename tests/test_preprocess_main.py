@@ -106,7 +106,7 @@ def test_preprocess_main_crop_areas_not_called_when_excluded(test_polygon_path, 
 # ---------------------------------------------------------------------------
 
 def test_preprocess_main_cropcalendar_called(test_polygon_path, tmp_path):
-    mocks = _run_with_mocks(test_polygon_path, tmp_path, preprocess=["cropcalendar"])
+    mocks = _run_with_mocks(test_polygon_path, tmp_path, preprocess=["crop_calendar"])
     mocks["cropcalendar"].assert_called_once()
 
 
@@ -179,7 +179,7 @@ def test_preprocess_main_all_steps_called(test_polygon_path, tmp_path):
     long_token = "a" * 40
     mocks = _run_with_mocks(
         test_polygon_path, tmp_path,
-        preprocess=["soil", "crop_areas", "cropcalendar", "climate"],
+        preprocess=["soil", "crop_areas", "crop_calendar", "climate"],
         start_year=2005, end_year=_CURRENT_YEAR - 1,
         api_token=long_token,
     )

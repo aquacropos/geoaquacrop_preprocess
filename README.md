@@ -80,9 +80,9 @@ nasanex_ensemble = 'r1i1p1f1'
 ### Option B — Python API
 
 ```python
-from geoaquacrop_preprocess import geoaquacrop_preprocess
+from geoaquacrop_preprocess import run
 
-geoaquacrop_preprocess(
+run(
     domain_shape_path='domain.geojson',
     start_year=2020,
     end_year=2022,
@@ -90,6 +90,15 @@ geoaquacrop_preprocess(
     cell_resolution=0.05,
     workingdirectory='/path/to/output',
 )
+```
+
+Individual steps can also be run directly, without needing to build a `preprocess` list:
+
+```python
+from geoaquacrop_preprocess import soil, crop_area, crop_calendar, weather
+
+soil(domain_shape_path='domain.geojson', start_year=2020, end_year=2022,
+     workingdirectory='/path/to/output')
 ```
 
 ## Output files
@@ -113,7 +122,7 @@ Raw downloaded files are kept in `<workingdirectory>/rawdata/` as resumable chec
 | Parameter | Default | Description |
 |-----------|---------|-------------|
 | `cell_resolution` | `0.05` | Output grid cell size in decimal degrees |
-| `preprocess` | all steps | Steps to run: `'soil'`, `'crop_areas'`, `'cropcalendar'`, `'climate'` |
+| `preprocess` | all steps | Steps to run: `'soil'`, `'crop_areas'`, `'crop_calendar'`, `'climate'` |
 | `nasanex_model` | `'GFDL-CM4'` | CMIP6 model name (see [catalog](https://ds.nccs.nasa.gov/thredds/catalog/AMES/NEX/GDDP-CMIP6/catalog.html)) |
 | `nasanex_scenario` | `'ssp245'` | SSP scenario for years >= 2015 |
 | `nasanex_ensemble` | `'r1i1p1f1'` | Ensemble member identifier |
