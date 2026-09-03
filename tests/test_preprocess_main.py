@@ -1,5 +1,5 @@
 """
-Tests for geoaquacrop_preproc.preproc_main.geoaquacrop_preproc.
+Tests for geoaquacrop_preprocess.preprocess_main.geoaquacrop_preprocess.
 
 The sub-modules (soil, crop_areas, cropcalendar, climate_AgERA5, climate_nasanex)
 are mocked so the tests exercise the orchestration logic without any downloads.
@@ -11,46 +11,46 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from geoaquacrop_preproc.preproc_main import geoaquacrop_preproc
+from geoaquacrop_preprocess.preprocess_main import geoaquacrop_preprocess
 
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
-_MOCK_TARGET = "geoaquacrop_preproc.preproc_main"
+_MOCK_TARGET = "geoaquacrop_preprocess.preprocess_main"
 _CURRENT_YEAR = datetime.date.today().year
 
 
-def _run_with_mocks(test_polygon_path, tmp_path, preprocess, start_year=2030, end_year=2031,
+def _run_with_mocks(test_polygon_path, tmp_path, preprocessess, start_year=2030, end_year=2031,
                     api_token="dummy", extra_kwargs=None):
-    """Call geoaquacrop_preproc with all sub-module functions patched out."""
+    """Call geoaquacrop_preprocess with all sub-module functions patched out."""
     mock_to_match = MagicMock()
     mock_bounds = [0, 0, 1, 1]
 
     patches = [
         patch(f"{_MOCK_TARGET}.validate_inputs"),
         patch(f"{_MOCK_TARGET}.basegrid", return_value=(mock_to_match, mock_bounds)),
-        patch("geoaquacrop_preproc.soil.soil"),
-        patch("geoaquacrop_preproc.crop_areas.crop_areas"),
-        patch("geoaquacrop_preproc.cropcalendar_module.cropcalendar"),
-        patch("geoaquacrop_preproc.climate_AgERA5.climate_AgERA5"),
-        patch("geoaquacrop_preproc.climate_nasanex.climate_nasanex"),
+        patch("geoaquacrop_preprocess.soil.soil"),
+        patch("geoaquacrop_preprocess.crop_areas.crop_areas"),
+        patch("geoaquacrop_preprocess.cropcalendar_module.cropcalendar"),
+        patch("geoaquacrop_preprocess.climate_AgERA5.climate_AgERA5"),
+        patch("geoaquacrop_preprocess.climate_nasanex.climate_nasanex"),
     ]
 
-    kwargs = dict(preprocess=preprocess, workingdirectory=str(tmp_path))
+    kwargs = dict(preprocessess=preprocessess, workingdirectory=str(tmp_path))
     if extra_kwargs:
         kwargs.update(extra_kwargs)
 
     mocks = {}
     with (patch(f"{_MOCK_TARGET}.validate_inputs") as m_val,
           patch(f"{_MOCK_TARGET}.basegrid", return_value=(mock_to_match, mock_bounds)) as m_bg,
-          patch("geoaquacrop_preproc.soil.soil") as m_soil,
-          patch("geoaquacrop_preproc.crop_areas.crop_areas") as m_ca,
-          patch("geoaquacrop_preproc.cropcalendar_module.cropcalendar") as m_cc,
-          patch("geoaquacrop_preproc.climate_AgERA5.climate_AgERA5") as m_a5,
-          patch("geoaquacrop_preproc.climate_nasanex.climate_nasanex") as m_nex):
-        geoaquacrop_preproc(
+          patch("geoaquacrop_preprocess.soil.soil") as m_soil,
+          patch("geoaquacrop_preprocess.crop_areas.crop_areas") as m_ca,
+          patch("geoaquacrop_preprocess.cropcalendar_module.cropcalendar") as m_cc,
+          patch("geoaquacrop_preprocess.climate_AgERA5.climate_AgERA5") as m_a5,
+          patch("geoaquacrop_preprocess.climate_nasanex.climate_nasanex") as m_nex):
+        geoaquacrop_preprocess(
             test_polygon_path, start_year, end_year, api_token, **kwargs
         )
         return dict(validate=m_val, basegrid=m_bg, soil=m_soil, crop_areas=m_ca,
@@ -61,15 +61,15 @@ def _run_with_mocks(test_polygon_path, tmp_path, preprocess, start_year=2030, en
 # validate_inputs is always called
 # ---------------------------------------------------------------------------
 
-def test_preproc_main_calls_validate_inputs(test_polygon_path, tmp_path):
-    mocks = _run_with_mocks(test_polygon_path, tmp_path, preprocess=[])
+def test_preprocess_main_calls_validate_inputs(test_polygon_path, tmp_path):
+    mocks = _run_with_mocks(test_polygon_path, tmp_path, preprocessess=[])
     mocks["validate"].assert_called_once_with(
         test_polygon_path, 2030, 2031, "dummy"
     )
 
 
-def test_preproc_main_calls_basegrid(test_polygon_path, tmp_path):
-    mocks = _run_with_mocks(test_polygon_path, tmp_path, preprocess=[])
+def test_preprocess_main_calls_basegrid(test_polygon_path, tmp_path):
+    mocks = _run_with_mocks(test_polygon_path, tmp_path, preprocessess=[])
     mocks["basegrid"].assert_called_once()
 
 
@@ -77,13 +77,13 @@ def test_preproc_main_calls_basegrid(test_polygon_path, tmp_path):
 # Soil preprocessing
 # ---------------------------------------------------------------------------
 
-def test_preproc_main_soil_step_called(test_polygon_path, tmp_path):
-    mocks = _run_with_mocks(test_polygon_path, tmp_path, preprocess=["soil"])
+def test_preprocess_main_soil_step_called(test_polygon_path, tmp_path):
+    mocks = _run_with_mocks(test_polygon_path, tmp_path, preprocessess=["soil"])
     mocks["soil"].assert_called_once()
 
 
-def test_preproc_main_soil_not_called_when_not_requested(test_polygon_path, tmp_path):
-    mocks = _run_with_mocks(test_polygon_path, tmp_path, preprocess=[])
+def test_preprocess_main_soil_not_called_when_not_requested(test_polygon_path, tmp_path):
+    mocks = _run_with_mocks(test_polygon_path, tmp_path, preprocessess=[])
     mocks["soil"].assert_not_called()
 
 
@@ -91,13 +91,13 @@ def test_preproc_main_soil_not_called_when_not_requested(test_polygon_path, tmp_
 # Crop-areas preprocessing
 # ---------------------------------------------------------------------------
 
-def test_preproc_main_crop_areas_called(test_polygon_path, tmp_path):
-    mocks = _run_with_mocks(test_polygon_path, tmp_path, preprocess=["crop_areas"])
+def test_preprocess_main_crop_areas_called(test_polygon_path, tmp_path):
+    mocks = _run_with_mocks(test_polygon_path, tmp_path, preprocessess=["crop_areas"])
     mocks["crop_areas"].assert_called_once()
 
 
-def test_preproc_main_crop_areas_not_called_when_excluded(test_polygon_path, tmp_path):
-    mocks = _run_with_mocks(test_polygon_path, tmp_path, preprocess=["soil"])
+def test_preprocess_main_crop_areas_not_called_when_excluded(test_polygon_path, tmp_path):
+    mocks = _run_with_mocks(test_polygon_path, tmp_path, preprocessess=["soil"])
     mocks["crop_areas"].assert_not_called()
 
 
@@ -105,8 +105,8 @@ def test_preproc_main_crop_areas_not_called_when_excluded(test_polygon_path, tmp
 # Crop-calendar preprocessing
 # ---------------------------------------------------------------------------
 
-def test_preproc_main_cropcalendar_called(test_polygon_path, tmp_path):
-    mocks = _run_with_mocks(test_polygon_path, tmp_path, preprocess=["cropcalendar"])
+def test_preprocess_main_cropcalendar_called(test_polygon_path, tmp_path):
+    mocks = _run_with_mocks(test_polygon_path, tmp_path, preprocessess=["cropcalendar"])
     mocks["cropcalendar"].assert_called_once()
 
 
@@ -114,12 +114,12 @@ def test_preproc_main_cropcalendar_called(test_polygon_path, tmp_path):
 # Climate — AgERA5 selected for historical-only periods
 # ---------------------------------------------------------------------------
 
-def test_preproc_main_uses_agera5_for_historical_period(test_polygon_path, tmp_path):
+def test_preprocess_main_uses_agera5_for_historical_period(test_polygon_path, tmp_path):
     """start/end within AgERA5 window (1979 to last complete year) → AgERA5."""
     long_token = "a" * 40
     mocks = _run_with_mocks(
         test_polygon_path, tmp_path,
-        preprocess=["climate"],
+        preprocessess=["climate"],
         start_year=2005, end_year=_CURRENT_YEAR - 1,
         api_token=long_token,
     )
@@ -131,21 +131,21 @@ def test_preproc_main_uses_agera5_for_historical_period(test_polygon_path, tmp_p
 # Climate — NASA NEX selected for future periods
 # ---------------------------------------------------------------------------
 
-def test_preproc_main_uses_nasanex_for_future_period(test_polygon_path, tmp_path):
+def test_preprocess_main_uses_nasanex_for_future_period(test_polygon_path, tmp_path):
     """end_year in the future → NASA NEX."""
     mocks = _run_with_mocks(
         test_polygon_path, tmp_path,
-        preprocess=["climate"],
+        preprocessess=["climate"],
         start_year=2030, end_year=2050,
     )
     mocks["nasanex"].assert_called_once()
     mocks["agera5"].assert_not_called()
 
 
-def test_preproc_main_nasanex_custom_model(test_polygon_path, tmp_path):
+def test_preprocess_main_nasanex_custom_model(test_polygon_path, tmp_path):
     mocks = _run_with_mocks(
         test_polygon_path, tmp_path,
-        preprocess=["climate"],
+        preprocessess=["climate"],
         start_year=2030, end_year=2050,
         extra_kwargs={"nasanex_model": "MPI-ESM1-2-HR",
                       "nasanex_scenario": "ssp585",
@@ -160,14 +160,14 @@ def test_preproc_main_nasanex_custom_model(test_polygon_path, tmp_path):
 # workingdirectory defaults to cwd
 # ---------------------------------------------------------------------------
 
-def test_preproc_main_default_workingdir_is_cwd(test_polygon_path, tmp_path, monkeypatch):
+def test_preprocess_main_default_workingdir_is_cwd(test_polygon_path, tmp_path, monkeypatch):
     """When workingdirectory is not provided, os.getcwd() should be used."""
     monkeypatch.chdir(tmp_path)
     with (patch(f"{_MOCK_TARGET}.validate_inputs"),
           patch(f"{_MOCK_TARGET}.basegrid", return_value=(MagicMock(), [0, 0, 1, 1]))):
         # Pass workingdirectory=None explicitly (the default)
-        geoaquacrop_preproc(test_polygon_path, 2030, 2031, "dummy",
-                            preprocess=[], workingdirectory=None)
+        geoaquacrop_preprocess(test_polygon_path, 2030, 2031, "dummy",
+                            preprocessess=[], workingdirectory=None)
     # If we reach here without raising, the default was accepted
 
 
@@ -175,11 +175,11 @@ def test_preproc_main_default_workingdir_is_cwd(test_polygon_path, tmp_path, mon
 # Multiple steps in a single call
 # ---------------------------------------------------------------------------
 
-def test_preproc_main_all_steps_called(test_polygon_path, tmp_path):
+def test_preprocess_main_all_steps_called(test_polygon_path, tmp_path):
     long_token = "a" * 40
     mocks = _run_with_mocks(
         test_polygon_path, tmp_path,
-        preprocess=["soil", "crop_areas", "cropcalendar", "climate"],
+        preprocessess=["soil", "crop_areas", "cropcalendar", "climate"],
         start_year=2005, end_year=_CURRENT_YEAR - 1,
         api_token=long_token,
     )

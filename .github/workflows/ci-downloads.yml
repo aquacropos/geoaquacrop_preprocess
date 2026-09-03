@@ -7,13 +7,13 @@ name: Download Tests
 on:
   pull_request:
     paths:
-      - "src/geoaquacrop_preproc/climate_AgERA5.py"
-      - "src/geoaquacrop_preproc/climate_nasanex.py"
-      - "src/geoaquacrop_preproc/soil.py"
-      - "src/geoaquacrop_preproc/crop_areas.py"
-      - "src/geoaquacrop_preproc/cropcalendar_module.py"
-      - "src/geoaquacrop_preproc/ricecalendar_marc.py"
-      - "src/geoaquacrop_preproc/preproc_tools.py"
+      - "src/geoaquacrop_preprocess/climate_AgERA5.py"
+      - "src/geoaquacrop_preprocess/climate_nasanex.py"
+      - "src/geoaquacrop_preprocess/soil.py"
+      - "src/geoaquacrop_preprocess/crop_areas.py"
+      - "src/geoaquacrop_preprocess/cropcalendar_module.py"
+      - "src/geoaquacrop_preprocess/ricecalendar_marc.py"
+      - "src/geoaquacrop_preprocess/preprocess_tools.py"
       - "tests/test_downloads.py"
   workflow_dispatch:
 

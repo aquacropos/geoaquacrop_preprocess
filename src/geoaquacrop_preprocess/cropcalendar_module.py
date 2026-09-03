@@ -5,11 +5,11 @@ import xarray as xr
 import rioxarray as rio
 from shapely.geometry import mapping
 from rasterio.warp import Resampling
-from .preproc_tools import download_url, unzip_all, ensure_xy_dims, makedirs, safe_clip
+from .preprocess_tools import download_url, unzip_all, ensure_xy_dims, makedirs, safe_clip
 
 
 def cropcalendar(domain_path, basepath, referenceraster_path, mask=None, to_match=None):
-    """Download and preprocess GGCMI phase 3 crop calendar data.
+    """Download and preprocessess GGCMI phase 3 crop calendar data.
 
     Downloads planting day and growing season length for all GGCMI v1.01 crop
     types (Jägermeyr et al., 2021; https://zenodo.org/records/5062513), reprojects

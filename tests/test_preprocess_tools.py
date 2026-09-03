@@ -1,5 +1,5 @@
 """
-Tests for pure utility functions in geoaquacrop_preproc.preproc_tools.
+Tests for pure utility functions in geoaquacrop_preprocess.preprocess_tools.
 
 All tests here run without any network access.
 """
@@ -12,7 +12,7 @@ import pytest
 import xarray as xr
 import rioxarray  # noqa: F401 – registers .rio accessor
 
-from geoaquacrop_preproc.preproc_tools import (
+from geoaquacrop_preprocess.preprocess_tools import (
     spam_refyear,
     basegrid,
     safe_clip,
@@ -20,8 +20,8 @@ from geoaquacrop_preproc.preproc_tools import (
     ensure_xy_dims,
     unzip_all,
     agera5_merge_yearly,
-    preproc_agera5,
-    preproc_spam,
+    preprocess_agera5,
+    preprocess_spam,
 )
 
 
@@ -182,7 +182,7 @@ def test_safe_clip_non_overlapping_returns_empty(test_polygon_gdf):
 def test_unzip_all_extracts_and_removes_zip(tmp_path):
     """unzip_all should extract the archive to a same-named folder and delete the zip."""
     from zipfile import ZipFile
-    from geoaquacrop_preproc.preproc_tools import unzip_all
+    from geoaquacrop_preprocess.preprocess_tools import unzip_all
 
     zip_path = tmp_path / "archive.zip"
     with ZipFile(str(zip_path), "w") as z:
@@ -197,7 +197,7 @@ def test_unzip_all_extracts_and_removes_zip(tmp_path):
 
 def test_unzip_all_no_zips_is_noop(tmp_path):
     """unzip_all on a directory with no ZIPs should succeed silently."""
-    from geoaquacrop_preproc.preproc_tools import unzip_all
+    from geoaquacrop_preprocess.preprocess_tools import unzip_all
 
     (tmp_path / "notazip.txt").write_text("content")
     unzip_all(str(tmp_path))   # must not raise
@@ -206,7 +206,7 @@ def test_unzip_all_no_zips_is_noop(tmp_path):
 def test_unzip_all_nested_zip(tmp_path):
     """unzip_all should also extract a ZIP that was itself inside an extracted folder."""
     from zipfile import ZipFile
-    from geoaquacrop_preproc.preproc_tools import unzip_all
+    from geoaquacrop_preprocess.preprocess_tools import unzip_all
 
     # Outer ZIP contains an inner ZIP
     inner_zip_content = tmp_path / "_inner.zip"
@@ -233,7 +233,7 @@ def test_unzip_all_nested_zip(tmp_path):
 def test_agera5_merge_yearly_combines_daily_files(tmp_path):
     """agera5_merge_yearly should merge daily NetCDF files into one yearly file."""
     import pandas as pd
-    from geoaquacrop_preproc.preproc_tools import agera5_merge_yearly
+    from geoaquacrop_preprocess.preprocess_tools import agera5_merge_yearly
 
     yearfile = str(tmp_path / "MinTemp2020.nc")
     yearfolder = tmp_path / "MinTemp2020"   # same stem, no extension
@@ -266,11 +266,11 @@ def test_agera5_merge_yearly_combines_daily_files(tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# preproc_agera5
+# preprocess_agera5
 # ---------------------------------------------------------------------------
 
 def _make_to_match(lats, lons):
-    """Create a minimal template raster for preproc tests."""
+    """Create a minimal template raster for preprocess tests."""
     ds = xr.Dataset(
         {"Band1": (("y", "x"), np.ones((len(lats), len(lons)), dtype=np.uint8))},
         coords={"y": lats, "x": lons},
@@ -282,11 +282,11 @@ def _make_to_match(lats, lons):
     ("MinTemp", "Temperature_Air_2m_Min_24h", 293.15, 20.0),
     ("MaxTemp", "Temperature_Air_2m_Max_24h", 303.15, 30.0),
 ])
-def test_preproc_agera5_temperature_conversion(variable, raw_name, kelvin_value,
+def test_preprocess_agera5_temperature_conversion(variable, raw_name, kelvin_value,
                                                 expected_celsius, tmp_path):
-    """preproc_agera5 should rename the variable and convert K → °C."""
+    """preprocess_agera5 should rename the variable and convert K → °C."""
     import pandas as pd
-    from geoaquacrop_preproc.preproc_tools import preproc_agera5
+    from geoaquacrop_preprocess.preprocess_tools import preprocess_agera5
 
     lats = np.array([12.0, 11.0, 10.0])   # descending (N→S)
     lons = np.array([100.0, 101.0, 102.0])
@@ -304,7 +304,7 @@ def test_preproc_agera5_temperature_conversion(variable, raw_name, kelvin_value,
         }
     )
 
-    preproc_agera5(src, variable, [2020], str(tmp_path), to_match)
+    preprocess_agera5(src, variable, [2020], str(tmp_path), to_match)
 
     outfile = tmp_path / "processed" / f"{variable}20202020.nc"
     assert outfile.exists(), f"Output file {outfile} was not created."
@@ -316,10 +316,10 @@ def test_preproc_agera5_temperature_conversion(variable, raw_name, kelvin_value,
     result.close()
 
 
-def test_preproc_agera5_precipitation_clamps_negatives(tmp_path):
-    """preproc_agera5 should clip negative precipitation values to 0."""
+def test_preprocess_agera5_precipitation_clamps_negatives(tmp_path):
+    """preprocess_agera5 should clip negative precipitation values to 0."""
     import pandas as pd
-    from geoaquacrop_preproc.preproc_tools import preproc_agera5
+    from geoaquacrop_preprocess.preprocess_tools import preprocess_agera5
 
     lats = np.array([12.0, 11.0, 10.0])
     lons = np.array([100.0, 101.0, 102.0])
@@ -337,7 +337,7 @@ def test_preproc_agera5_precipitation_clamps_negatives(tmp_path):
         }
     )
 
-    preproc_agera5(src, "Precipitation", [2020], str(tmp_path), to_match)
+    preprocess_agera5(src, "Precipitation", [2020], str(tmp_path), to_match)
 
     outfile = tmp_path / "processed" / "Precipitation20202020.nc"
     assert outfile.exists()
@@ -347,10 +347,10 @@ def test_preproc_agera5_precipitation_clamps_negatives(tmp_path):
     result.close()
 
 
-def test_preproc_agera5_output_is_float32(tmp_path):
-    """preproc_agera5 should always save float32 data."""
+def test_preprocess_agera5_output_is_float32(tmp_path):
+    """preprocess_agera5 should always save float32 data."""
     import pandas as pd
-    from geoaquacrop_preproc.preproc_tools import preproc_agera5
+    from geoaquacrop_preprocess.preprocess_tools import preprocess_agera5
 
     lats = np.array([12.0, 11.0, 10.0])
     lons = np.array([100.0, 101.0, 102.0])
@@ -369,7 +369,7 @@ def test_preproc_agera5_output_is_float32(tmp_path):
         }
     )
 
-    preproc_agera5(src, "Precipitation", [2020], str(tmp_path), to_match)
+    preprocess_agera5(src, "Precipitation", [2020], str(tmp_path), to_match)
 
     outfile = tmp_path / "processed" / "Precipitation20202020.nc"
     result = xr.open_dataset(str(outfile))
@@ -378,14 +378,14 @@ def test_preproc_agera5_output_is_float32(tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# preproc_spam
+# preprocess_spam
 # ---------------------------------------------------------------------------
 
-def test_preproc_spam_physical_area(test_polygon_path, test_polygon_gdf, tmp_path):
-    """preproc_spam should produce a NetCDF with per-crop area variables."""
+def test_preprocess_spam_physical_area(test_polygon_path, test_polygon_gdf, tmp_path):
+    """preprocess_spam should produce a NetCDF with per-crop area variables."""
     import rasterio
     from rasterio.transform import from_bounds
-    from geoaquacrop_preproc.preproc_tools import preproc_spam, basegrid
+    from geoaquacrop_preprocess.preprocess_tools import preprocess_spam, basegrid
 
     template_path = str(tmp_path / "template.nc")
     to_match, _ = basegrid(test_polygon_path, resolution=0.05, templategrid_path=template_path)
@@ -412,7 +412,7 @@ def test_preproc_spam_physical_area(test_polygon_path, test_polygon_gdf, tmp_pat
         ) as dst:
             dst.write(data, 1)
 
-    preproc_spam(str(tmp_path), str(spam_dir), "2020", "physical_area",
+    preprocess_spam(str(tmp_path), str(spam_dir), "2020", "physical_area",
                  test_polygon_path, to_match)
 
     outfile = tmp_path / "processed" / "spam2020_physical_area.nc"
@@ -424,11 +424,11 @@ def test_preproc_spam_physical_area(test_polygon_path, test_polygon_gdf, tmp_pat
     result.close()
 
 
-def test_preproc_spam_yield(test_polygon_path, test_polygon_gdf, tmp_path):
-    """preproc_spam with spam_variable='yield' should divide values by 1000."""
+def test_preprocess_spam_yield(test_polygon_path, test_polygon_gdf, tmp_path):
+    """preprocess_spam with spam_variable='yield' should divide values by 1000."""
     import rasterio
     from rasterio.transform import from_bounds
-    from geoaquacrop_preproc.preproc_tools import preproc_spam, basegrid
+    from geoaquacrop_preprocess.preprocess_tools import preprocess_spam, basegrid
 
     template_path = str(tmp_path / "template.nc")
     to_match, _ = basegrid(test_polygon_path, resolution=0.05, templategrid_path=template_path)
@@ -452,7 +452,7 @@ def test_preproc_spam_yield(test_polygon_path, test_polygon_gdf, tmp_path):
     ) as dst:
         dst.write(data, 1)
 
-    preproc_spam(str(tmp_path), str(spam_dir), "2020", "yield",
+    preprocess_spam(str(tmp_path), str(spam_dir), "2020", "yield",
                  test_polygon_path, to_match)
 
     outfile = tmp_path / "processed" / "spam2020_yield.nc"
@@ -466,8 +466,8 @@ def test_preproc_spam_yield(test_polygon_path, test_polygon_gdf, tmp_path):
     result.close()
 
 
-def test_preproc_spam_filters_invalid_technique_and_crop(test_polygon_path, test_polygon_gdf, tmp_path):
-    """preproc_spam should delete files with unsupported technique codes or unknown crop IDs."""
+def test_preprocess_spam_filters_invalid_technique_and_crop(test_polygon_path, test_polygon_gdf, tmp_path):
+    """preprocess_spam should delete files with unsupported technique codes or unknown crop IDs."""
     import rasterio
     from rasterio.transform import from_bounds
 
@@ -498,7 +498,7 @@ def test_preproc_spam_filters_invalid_technique_and_crop(test_polygon_path, test
     invalid_crop = spam_dir / "spam2020V1r0_global_phys_area_ZZZZ_R.tif"
     _make_tif(invalid_crop.name)
 
-    preproc_spam(str(tmp_path), str(spam_dir), "2020", "physical_area",
+    preprocess_spam(str(tmp_path), str(spam_dir), "2020", "physical_area",
                  test_polygon_path, to_match)
 
     assert not invalid_tech.exists(), "Invalid-technique file should be deleted."
@@ -507,11 +507,11 @@ def test_preproc_spam_filters_invalid_technique_and_crop(test_polygon_path, test
 
 
 # ---------------------------------------------------------------------------
-# preproc_agera5 — InitSoilwater branch (lines 219-220)
+# preprocess_agera5 — InitSoilwater branch (lines 219-220)
 # ---------------------------------------------------------------------------
 
-def test_preproc_agera5_initsoilwater_path(tmp_path):
-    """preproc_agera5 with variable='InitSoilwater' covers the ERA5-Land rename path."""
+def test_preprocess_agera5_initsoilwater_path(tmp_path):
+    """preprocess_agera5 with variable='InitSoilwater' covers the ERA5-Land rename path."""
     import pandas as pd
 
     lats = np.array([12.0, 11.0, 10.0])
@@ -531,7 +531,7 @@ def test_preproc_agera5_initsoilwater_path(tmp_path):
         }
     )
 
-    preproc_agera5(src, "InitSoilwater", [2020], str(tmp_path), to_match)
+    preprocess_agera5(src, "InitSoilwater", [2020], str(tmp_path), to_match)
 
     # Check that the function ran without raising
     outfile = tmp_path / "processed" / "InitSoilwater20202020.nc"

@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "geoaquacrop-preproc-dev"
+name = "geoaquacrop-preprocess-dev"
 version = "0.1.0"
 description = "Automated data download and preprocessing pipeline for running FAO AquaCrop over large regions in gridded format"
 readme = "README.md"
@@ -38,7 +38,7 @@ docs = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/geoaquacrop_preproc"]
+packages = ["src/geoaquacrop_preprocess"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -48,5 +48,5 @@ markers = [
 ]
 
 [tool.coverage.run]
-source = ["src/geoaquacrop_preproc"]
+source = ["src/geoaquacrop_preprocess"]
 omit = ["*/tests/*"]

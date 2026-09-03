@@ -8,7 +8,7 @@ import socket
 
 import pytest
 
-from geoaquacrop_preproc.climate_AgERA5 import _is_dns_error, force_resolve
+from geoaquacrop_preprocess.climate_AgERA5 import _is_dns_error, force_resolve
 
 
 # ---------------------------------------------------------------------------

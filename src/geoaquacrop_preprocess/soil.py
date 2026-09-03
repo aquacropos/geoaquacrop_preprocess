@@ -6,11 +6,11 @@ import glob
 import rioxarray
 import xarray as xr
 import numpy as np
-from .preproc_tools import makedirs, safe_clip
+from .preprocess_tools import makedirs, safe_clip
 
 
 def soil(domain_path, res, basepath, templategrid_path, mask=None, to_match=None):
-    """Download and preprocess ISRIC SoilGrids soil property data.
+    """Download and preprocessess ISRIC SoilGrids soil property data.
 
     Downloads clay, sand, silt, and soil organic carbon content for all six
     standard depth intervals (0–5, 5–15, 15–30, 30–60, 60–100, 100–200 cm) from

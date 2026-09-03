@@ -4,13 +4,13 @@ Quick start
 Option A — edit and run the main script
 -----------------------------------------
 
-Open ``src/geoaquacrop_preproc/preproc_main.py``, set the input arguments at
+Open ``src/geoaquacrop_preprocess/preprocess_main.py``, set the input arguments at
 the top of the file, and run:
 
 .. code-block:: bash
 
    conda activate geoaquacrop
-   python -m geoaquacrop_preproc.preproc_main
+   python -m geoaquacrop_preprocess.preprocess_main
 
 Key input arguments:
 
@@ -36,9 +36,9 @@ Option B — Python API
 
 .. code-block:: python
 
-   from geoaquacrop_preproc import geoaquacrop_preproc
+   from geoaquacrop_preprocess import geoaquacrop_preprocess
 
-   geoaquacrop_preproc(
+   geoaquacrop_preprocess(
        domain_shape_path='domain.geojson',
        start_year=2020,
        end_year=2022,

@@ -67,7 +67,7 @@ def unzip_all(dir='.'):
                 os.remove(file)
 
 ## Preprocessing functions
-def preproc_spam(basepath, download_dir, refyear, spam_variable, domain_path, to_match, mask=None):
+def preprocess_spam(basepath, download_dir, refyear, spam_variable, domain_path, to_match, mask=None):
     """Reproject, clip, and merge SPAM GeoTIFF layers into a domain NetCDF.
 
     Iterates over all per-crop GeoTIFF files in ``download_dir``, reprojects each
@@ -182,7 +182,7 @@ def spam_refyear(start_year, end_year):
     return refyear
 
 ## Preprocessing climate data from AgERA5 (and soil water content from ERA5-Land but this is currently not supported as input to simulations)
-def preproc_agera5(src, variable, yearlist, basepath, to_match):
+def preprocess_agera5(src, variable, yearlist, basepath, to_match):
     """Reproject, gap-fill, mask, and save an AgERA5 climate variable.
 
     Renames variables and converts units to AquaCrop conventions, reprojects to
@@ -201,7 +201,7 @@ def preproc_agera5(src, variable, yearlist, basepath, to_match):
         to_match (xarray.Dataset): Template raster from :func:`basegrid`;
             defines the output grid and domain mask.
     """
-    print("        *** PREPROCESSING CLIMATE DATA: " + variable + " ***")
+    print("        *** PREPROCESSESSING CLIMATE DATA: " + variable + " ***")
 
     # Variable name definitions for changing to AquaCrop conventions
     varname_dict = {'MinTemp': 'Temperature_Air_2m_Min_24h', 'MaxTemp': 'Temperature_Air_2m_Max_24h', 'Precipitation': 'Precipitation_Flux', 'ReferenceET': 'ReferenceET_PenmanMonteith_FAO56'}  # Names of data variables in AquaCrop and AgERA5 data, respectively

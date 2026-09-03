@@ -1,9 +1,9 @@
 import os
-from .preproc_tools import spam_refyear, preproc_spam, makedirs, download_url, unzip_all
+from .preprocess_tools import spam_refyear, preprocess_spam, makedirs, download_url, unzip_all
 
 
 def crop_areas(domain_path, spam_variable, start_year, end_year, basepath, to_match, mask=None):
-    """Download and preprocess SPAM crop area or yield data.
+    """Download and preprocessess SPAM crop area or yield data.
 
     Downloads global gridded crop statistics from the Spatial Production Allocation
     Model (SPAM), reprojects to the project grid, and clips to the model domain.
@@ -23,7 +23,7 @@ def crop_areas(domain_path, spam_variable, start_year, end_year, basepath, to_ma
             ``<basepath>/rawdata/cropmasks/`` and processed files to
             ``<basepath>/processed/``.
         to_match (xarray.Dataset): Template raster from
-            :func:`~geoaquacrop_preproc.preproc_tools.basegrid`; defines the
+            :func:`~geoaquacrop_preprocess.preprocess_tools.basegrid`; defines the
             output grid.
         mask (geopandas.GeoDataFrame, optional): Pre-loaded domain GeoDataFrame.
             If ``None``, it is read from ``domain_path``.
@@ -83,4 +83,4 @@ def crop_areas(domain_path, spam_variable, start_year, end_year, basepath, to_ma
     targetfile = os.path.join(target_dir, 'spam' + refyear + '_' + spam_variable + '.nc')
     if not os.path.exists(targetfile):  # Skip processing if file already exists
         print(f"Processing SPAM data for model domain and saving to {targetfile}")
-        preproc_spam(basepath, download_dir, refyear, spam_variable, domain_path, to_match, mask=mask)
+        preprocess_spam(basepath, download_dir, refyear, spam_variable, domain_path, to_match, mask=mask)

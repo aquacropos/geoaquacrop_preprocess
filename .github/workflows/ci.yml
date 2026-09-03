@@ -31,7 +31,7 @@ jobs:
 
       - name: Run tests with coverage
         run: |
-          pytest tests/ -m "not download" --cov=geoaquacrop_preproc --cov-report=xml --cov-report=term-missing -v
+          pytest tests/ -m "not download" --cov=geoaquacrop_preprocess --cov-report=xml --cov-report=term-missing -v
 
       - name: Upload coverage to Codecov
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.13'

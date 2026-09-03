@@ -3,6 +3,6 @@ validate\_inputs
 
 Input validation utilities run before the preprocessing pipeline starts.
 
-.. automodule:: geoaquacrop_preproc.validate_inputs
+.. automodule:: geoaquacrop_preprocess.validate_inputs
    :members:
    :member-order: bysource

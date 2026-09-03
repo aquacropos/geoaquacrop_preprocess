@@ -21,7 +21,7 @@ import xarray as xr
 @pytest.fixture(scope="module")
 def template_grid(tmp_path_factory, test_polygon_path):
     """Create a reusable basegrid template for the test polygon."""
-    from geoaquacrop_preproc.preproc_tools import basegrid
+    from geoaquacrop_preprocess.preprocess_tools import basegrid
 
     tmp = tmp_path_factory.mktemp("template")
     template_path = str(tmp / "template.nc")
@@ -65,7 +65,7 @@ def _create_synthetic_soilgrids_tifs(soilgrids_dir, test_polygon_gdf):
 def test_soil_processes_synthetic_tifs(test_polygon_path, test_polygon_gdf, tmp_path,
                                         template_grid):
     """soil() with pre-existing tif files skips WCS download and writes NetCDF outputs."""
-    from geoaquacrop_preproc.soil import soil
+    from geoaquacrop_preprocess.soil import soil
 
     to_match, _, template_path = template_grid
 
@@ -87,7 +87,7 @@ def test_soil_processes_synthetic_tifs(test_polygon_path, test_polygon_gdf, tmp_
 def test_soil_output_contains_expected_variables(test_polygon_path, test_polygon_gdf,
                                                    tmp_path, template_grid):
     """Each output soil file should contain Clay, Sand, Silt, and Som variables."""
-    from geoaquacrop_preproc.soil import soil
+    from geoaquacrop_preprocess.soil import soil
 
     to_match, _, template_path = template_grid
 
@@ -110,7 +110,7 @@ def test_soil_output_contains_expected_variables(test_polygon_path, test_polygon
 def test_soil_skips_existing_output_file(test_polygon_path, test_polygon_gdf,
                                           tmp_path, template_grid):
     """soil() should skip depth layers whose output files already exist."""
-    from geoaquacrop_preproc.soil import soil
+    from geoaquacrop_preprocess.soil import soil
 
     to_match, _, template_path = template_grid
 
@@ -166,12 +166,12 @@ def _create_synthetic_spam_tifs(spam_unzipped_dir, test_polygon_gdf, refyear,
 def test_crop_areas_physical_area(test_polygon_path, test_polygon_gdf, tmp_path,
                                    template_grid):
     """crop_areas() with a pre-unzipped spam dir should produce a processed NetCDF."""
-    from geoaquacrop_preproc.crop_areas import crop_areas
+    from geoaquacrop_preprocess.crop_areas import crop_areas
 
     to_match, _, _ = template_grid
 
     # Determine the refyear and pre-create the unzipped directory
-    from geoaquacrop_preproc.preproc_tools import spam_refyear, makedirs
+    from geoaquacrop_preprocess.preprocess_tools import spam_refyear, makedirs
     refyear = spam_refyear(2020, 2030)   # → '2020'
     target_dir = makedirs(str(tmp_path), "rawdata", "cropmasks")
     spam_unzipped_dir = tmp_path / "rawdata" / "cropmasks" / f"spam{refyear}_physical_area"
@@ -191,8 +191,8 @@ def test_crop_areas_physical_area(test_polygon_path, test_polygon_gdf, tmp_path,
 def test_crop_areas_skips_processing_when_output_exists(test_polygon_path, test_polygon_gdf,
                                                           tmp_path, template_grid):
     """crop_areas() should skip processing if the target NetCDF already exists."""
-    from geoaquacrop_preproc.crop_areas import crop_areas
-    from geoaquacrop_preproc.preproc_tools import spam_refyear, makedirs
+    from geoaquacrop_preprocess.crop_areas import crop_areas
+    from geoaquacrop_preprocess.preprocess_tools import spam_refyear, makedirs
 
     to_match, _, _ = template_grid
     refyear = spam_refyear(2020, 2030)
@@ -244,7 +244,7 @@ def _create_synthetic_ggcmi_nc4(path, lats, lons, planting_val=90, gsl_val=120):
 def test_cropcalendar_processes_synthetic_nc4_files(test_polygon_path, test_polygon_gdf,
                                                       tmp_path, template_grid):
     """cropcalendar() with a pre-unzipped ggcmi dir should produce cropcalendar.nc."""
-    from geoaquacrop_preproc.cropcalendar_module import cropcalendar
+    from geoaquacrop_preprocess.cropcalendar_module import cropcalendar
 
     to_match, _, template_path = template_grid
 
@@ -283,7 +283,7 @@ def test_cropcalendar_processes_synthetic_nc4_files(test_polygon_path, test_poly
 def test_cropcalendar_output_planting_range(test_polygon_path, test_polygon_gdf,
                                               tmp_path, template_grid):
     """Planting day values in output should be in [1, 366] (day of year)."""
-    from geoaquacrop_preproc.cropcalendar_module import cropcalendar
+    from geoaquacrop_preprocess.cropcalendar_module import cropcalendar
 
     to_match, _, template_path = template_grid
 

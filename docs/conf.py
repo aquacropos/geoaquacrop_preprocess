@@ -1,4 +1,4 @@
-"""Sphinx configuration for geoaquacrop-preproc documentation."""
+"""Sphinx configuration for geoaquacrop-preprocess documentation."""
 import importlib.metadata
 import os
 import sys
@@ -9,7 +9,7 @@ sys.path.insert(0, os.path.abspath("../src"))
 # ---------------------------------------------------------------------------
 # Project information
 # ---------------------------------------------------------------------------
-project = "geoaquacrop-preproc"
+project = "geoaquacrop-preprocess"
 author = "Josias Ritter"
 copyright = "2026, Josias Ritter"
 
@@ -25,7 +25,7 @@ copyright = "2026, Josias Ritter"
 #   - Host on Read the Docs, which handles versioning automatically via the
 #     .readthedocs.yaml file at the repository root.
 try:
-    release = importlib.metadata.version("geoaquacrop-preproc-dev")
+    release = importlib.metadata.version("geoaquacrop-preprocess-dev")
 except importlib.metadata.PackageNotFoundError:
     release = "0.1.0"
 version = ".".join(release.split(".")[:2])  # short X.Y version shown in sidebar

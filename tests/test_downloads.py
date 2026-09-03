@@ -1,5 +1,5 @@
 """
-Live-service / download tests for geoaquacrop-preproc-dev.
+Live-service / download tests for geoaquacrop-preprocess-dev.
 
 These tests hit real external APIs and download actual data.
 They are intentionally kept separate and are only executed when the
@@ -44,9 +44,9 @@ def _require_env(name: str) -> str:
 # ---------------------------------------------------------------------------
 
 def test_soil_download(test_polygon_path, tmp_path):
-    """Download and preprocess ISRIC SoilGrids data for the test polygon."""
-    from geoaquacrop_preproc.preproc_tools import basegrid
-    from geoaquacrop_preproc.soil import soil
+    """Download and preprocessess ISRIC SoilGrids data for the test polygon."""
+    from geoaquacrop_preprocess.preprocess_tools import basegrid
+    from geoaquacrop_preprocess.soil import soil
 
     template_path = str(tmp_path / "template_grid.nc")
     to_match, _ = basegrid(test_polygon_path, resolution=0.05, templategrid_path=template_path)
@@ -63,9 +63,9 @@ def test_soil_download(test_polygon_path, tmp_path):
 # ---------------------------------------------------------------------------
 
 def test_cropcalendar_download(test_polygon_path, tmp_path):
-    """Download and preprocess the GGCMI crop calendar for the test polygon."""
-    from geoaquacrop_preproc.preproc_tools import basegrid
-    from geoaquacrop_preproc.cropcalendar_module import cropcalendar
+    """Download and preprocessess the GGCMI crop calendar for the test polygon."""
+    from geoaquacrop_preprocess.preprocess_tools import basegrid
+    from geoaquacrop_preprocess.cropcalendar_module import cropcalendar
 
     template_path = str(tmp_path / "template_grid.nc")
     to_match, _ = basegrid(test_polygon_path, resolution=0.05, templategrid_path=template_path)
@@ -82,9 +82,9 @@ def test_cropcalendar_download(test_polygon_path, tmp_path):
 # ---------------------------------------------------------------------------
 
 def test_crop_areas_download(test_polygon_path, tmp_path):
-    """Download and preprocess SPAM crop areas for the test polygon."""
-    from geoaquacrop_preproc.preproc_tools import basegrid
-    from geoaquacrop_preproc.crop_areas import crop_areas
+    """Download and preprocessess SPAM crop areas for the test polygon."""
+    from geoaquacrop_preprocess.preprocess_tools import basegrid
+    from geoaquacrop_preprocess.crop_areas import crop_areas
 
     template_path = str(tmp_path / "template_grid.nc")
     to_match, _ = basegrid(test_polygon_path, resolution=0.05, templategrid_path=template_path)
@@ -107,9 +107,9 @@ def test_crop_areas_download(test_polygon_path, tmp_path):
 # ---------------------------------------------------------------------------
 
 def test_climate_nasanex_download(test_polygon_path, tmp_path):
-    """Download and preprocess NASA NEX climate data for the test polygon."""
-    from geoaquacrop_preproc.preproc_tools import basegrid
-    from geoaquacrop_preproc.climate_nasanex import climate_nasanex
+    """Download and preprocessess NASA NEX climate data for the test polygon."""
+    from geoaquacrop_preprocess.preprocess_tools import basegrid
+    from geoaquacrop_preprocess.climate_nasanex import climate_nasanex
 
     template_path = str(tmp_path / "template_grid.nc")
     to_match, _ = basegrid(test_polygon_path, resolution=0.05, templategrid_path=template_path)
@@ -133,15 +133,15 @@ def test_climate_nasanex_download(test_polygon_path, tmp_path):
 # ---------------------------------------------------------------------------
 
 def test_climate_agera5_download(test_polygon_path, tmp_path):
-    """Download and preprocess AgERA5 climate data for the test polygon.
+    """Download and preprocessess AgERA5 climate data for the test polygon.
 
     Requires the CDS_API_TOKEN environment variable to be set with a valid
     Copernicus Climate Data Store token.
     """
     api_token = _require_env("CDS_API_TOKEN")
 
-    from geoaquacrop_preproc.preproc_tools import basegrid
-    from geoaquacrop_preproc.climate_AgERA5 import climate_AgERA5
+    from geoaquacrop_preprocess.preprocess_tools import basegrid
+    from geoaquacrop_preprocess.climate_AgERA5 import climate_AgERA5
 
     template_path = str(tmp_path / "template_grid.nc")
     to_match, _ = basegrid(test_polygon_path, resolution=0.05, templategrid_path=template_path)

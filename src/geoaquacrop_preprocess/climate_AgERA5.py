@@ -1,5 +1,5 @@
 """
-Download and preprocess AgERA5 agrometeorological climate data.
+Download and preprocessess AgERA5 agrometeorological climate data.
 
 Retrieves the following daily variables from the Copernicus Climate Data Store
 (CDS) for a specified domain and time period:
@@ -11,7 +11,7 @@ Retrieves the following daily variables from the Copernicus Climate Data Store
 
 Downloads are split into yearly ZIP archives, each containing one ``.nc`` file
 per day. These are automatically merged into yearly NetCDF files and then
-combined and preprocessed into the final output files.
+combined and preprocessessed into the final output files.
 
 Includes a DNS fallback mechanism for university networks that intercept
 port-53 DNS, using DNS-over-HTTPS (Cloudflare) to resolve the CDS hostname.
@@ -27,7 +27,7 @@ import cdsapi
 from shapely.geometry import mapping
 #import pdb # pdb.set_trace()
 
-from .preproc_tools import agera5_merge_yearly, preproc_agera5, basegrid, makedirs, unzip_all
+from .preprocess_tools import agera5_merge_yearly, preprocess_agera5, basegrid, makedirs, unzip_all
 
 import socket
 import requests
@@ -178,12 +178,12 @@ def ensure_cds_dns(hostname="cds.climate.copernicus.eu"):
 
 # Continue with main script functionality
 def climate_AgERA5(basepath, start_year, end_year, api_token, to_match, variables=['MinTemp','MaxTemp','Precipitation','ReferenceET','InitSoilwater']):
-    """Download and preprocess AgERA5 daily climate data for a given area and period.
+    """Download and preprocessess AgERA5 daily climate data for a given area and period.
 
     Retrieves minimum temperature, maximum temperature, precipitation, and reference
     evapotranspiration from the AgERA5 dataset via the Copernicus CDS API. Data
     are downloaded as yearly ZIP archives, merged into yearly NetCDF files, and then
-    combined and preprocessed to produce the final outputs on the project grid.
+    combined and preprocessessed to produce the final outputs on the project grid.
 
     Args:
         basepath (str): Working directory. Raw downloads go to
@@ -195,7 +195,7 @@ def climate_AgERA5(basepath, start_year, end_year, api_token, to_match, variable
         api_token (str): Personal API token from the Copernicus Climate Data
             Store (https://cds.climate.copernicus.eu/).
         to_match (xarray.Dataset): Template raster from
-            :func:`~geoaquacrop_preproc.preproc_tools.basegrid`; defines the
+            :func:`~geoaquacrop_preprocess.preprocess_tools.basegrid`; defines the
             output grid and domain mask.
         variables (list[str]): Climate variables to process. Defaults to
             ``['MinTemp', 'MaxTemp', 'Precipitation', 'ReferenceET',
@@ -258,7 +258,7 @@ def climate_AgERA5(basepath, start_year, end_year, api_token, to_match, variable
         src = xr.open_mfdataset(file_paths, combine='by_coords').sortby('time')
 
         # Preprocessing
-        preproc_agera5(src, variable, yearlist, basepath, to_match)
+        preprocess_agera5(src, variable, yearlist, basepath, to_match)
         src.close()
 
     """
@@ -293,6 +293,6 @@ def climate_AgERA5(basepath, start_year, end_year, api_token, to_match, variable
 
         # Preprocessing
         src = xr.open_dataset(targetfile)
-        #preproc_era5(src, variable, yearlist, basepath, to_match)
-        preproc_agera5(src, variable, yearlist, basepath, to_match)
+        #preprocess_era5(src, variable, yearlist, basepath, to_match)
+        preprocess_agera5(src, variable, yearlist, basepath, to_match)
     """

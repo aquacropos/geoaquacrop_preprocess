@@ -1,7 +1,7 @@
-geoaquacrop-preproc
+geoaquacrop-preprocess
 ===================
 
-**geoaquacrop-preproc** is an automated data download and preprocessing pipeline
+**geoaquacrop-preprocess** is an automated data download and preprocessing pipeline
 for running `FAO AquaCrop <https://www.fao.org/aquacrop>`_ over large regions in
 gridded format.
 

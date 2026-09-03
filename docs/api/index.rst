@@ -4,9 +4,9 @@ API reference
 .. toctree::
    :maxdepth: 1
 
-   preproc_main
+   preprocess_main
    validate_inputs
-   preproc_tools
+   preprocess_tools
    soil
    crop_areas
    cropcalendar_module

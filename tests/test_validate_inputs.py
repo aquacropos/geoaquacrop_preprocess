@@ -1,5 +1,5 @@
 """
-Tests for geoaquacrop_preproc.validate_inputs.
+Tests for geoaquacrop_preprocess.validate_inputs.
 
 Covers input validation logic without any network access.
 """
@@ -7,7 +7,7 @@ Covers input validation logic without any network access.
 import os
 import pytest
 
-from geoaquacrop_preproc.validate_inputs import validate_inputs
+from geoaquacrop_preprocess.validate_inputs import validate_inputs
 
 
 # ---------------------------------------------------------------------------
@@ -127,7 +127,7 @@ def test_null_crs_raises(tmp_path):
     gdf_no_crs = gpd.GeoDataFrame(geometry=[box(5, 5, 10, 10)])
     # CRS is None by default when not set
 
-    with patch("geoaquacrop_preproc.validate_inputs.gpd.read_file", return_value=gdf_no_crs):
+    with patch("geoaquacrop_preprocess.validate_inputs.gpd.read_file", return_value=gdf_no_crs):
         with pytest.raises(ValueError, match="CRS"):
             validate_inputs(str(dummy), 2030, 2031, "dummy")
 

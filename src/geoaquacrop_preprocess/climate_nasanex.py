@@ -1,5 +1,5 @@
 """
-Download and preprocess NASA NEX-GDDP-CMIP6 daily climate projections.
+Download and preprocessess NASA NEX-GDDP-CMIP6 daily climate projections.
 
 Processed output variables (AquaCrop conventions):
 
@@ -39,7 +39,7 @@ import scipy.ndimage as ndi
 import xarray as xr
 from rasterio.warp import Resampling
 
-from .preproc_tools import ensure_xy_dims, makedirs
+from .preprocess_tools import ensure_xy_dims, makedirs
 
 # Cache of (model, scenario, ensemble, variable) -> (grid_label, version_suffix)
 # populated lazily by _discover_file_pattern().
@@ -317,7 +317,7 @@ def _calc_et0_xr(tasmin, tasmax, hurs, rsds, wind10m, elev=0.0):
 # Preprocessing: reproject → gap-fill → mask → save
 # ---------------------------------------------------------------------------
 
-def _preproc_and_save(src, variable, yearlist, basepath, to_match, model, scenario, ensemble):
+def _preprocess_and_save(src, variable, yearlist, basepath, to_match, model, scenario, ensemble):
     """Reproject, gap-fill, mask, and save a NASA NEX climate variable.
 
     Reprojects ``src`` to the project grid, fills spatial NaN gaps by
@@ -339,7 +339,7 @@ def _preproc_and_save(src, variable, yearlist, basepath, to_match, model, scenar
         ensemble (str): Ensemble member identifier stored as a global file
             attribute.
     """
-    print(f"        *** PREPROCESSING NASA NEX-GDDP-CMIP6: {variable} ***")
+    print(f"        *** PREPROCESSESSING NASA NEX-GDDP-CMIP6: {variable} ***")
 
     src = ensure_xy_dims(src)
 
@@ -416,7 +416,7 @@ def _preproc_and_save(src, variable, yearlist, basepath, to_match, model, scenar
         'cmip6_model'    : model,
         'cmip6_scenario' : scenario,
         'cmip6_ensemble' : ensemble,
-        'history'     : f'Preprocessed on {datetime.date.today().isoformat()} by geoaquacrop-preproc-dev.',
+        'history'     : f'Preprocessed on {datetime.date.today().isoformat()} by geoaquacrop-preprocess-dev.',
         'references'  : 'https://www.nasa.gov/nex/gddp',
     }
 
@@ -441,7 +441,7 @@ def climate_nasanex(
     variables=None,
     elev=0.0,
 ):
-    """Download and preprocess NASA NEX-GDDP-CMIP6 daily climate projections.
+    """Download and preprocessess NASA NEX-GDDP-CMIP6 daily climate projections.
 
     Fetches spatially-subsetted yearly files from the NCCS THREDDS server for
     the selected CMIP6 model, reprojects to the project grid, and saves
@@ -453,7 +453,7 @@ def climate_nasanex(
             SSP range 2015–2100 are handled automatically.
         end_year (int): Last year to process (inclusive).
         to_match (xr.Dataset): Template raster from
-            :func:`~geoaquacrop_preproc.preproc_tools.basegrid`; defines the
+            :func:`~geoaquacrop_preprocess.preprocess_tools.basegrid`; defines the
             output grid and domain mask.
         model (str): CMIP6 model name. Default ``'GFDL-CM4'``. Commonly used
             models include ACCESS-CM2, BCC-CSM2-MR, CESM2, CMCC-CM2-SR5,
@@ -559,7 +559,7 @@ def climate_nasanex(
             da = ds[nex_var].astype(np.float32) - np.float32(273.15)
             da.attrs.update({'units': 'degC'})
             out = da.to_dataset(name=variable)
-            _preproc_and_save(out, variable, yearlist, basepath, to_match, model, out_scenario, ensemble)
+            _preprocess_and_save(out, variable, yearlist, basepath, to_match, model, out_scenario, ensemble)
             ds.close()
 
         elif variable == 'Precipitation':
@@ -567,7 +567,7 @@ def climate_nasanex(
             da = (ds['pr'].astype(np.float32) * np.float32(86400.0)).clip(min=np.float32(0.0))
             da.attrs.update({'units': 'mm/day'})
             out = da.to_dataset(name=variable)
-            _preproc_and_save(out, variable, yearlist, basepath, to_match, model, out_scenario, ensemble)
+            _preprocess_and_save(out, variable, yearlist, basepath, to_match, model, out_scenario, ensemble)
             ds.close()
 
         elif variable == 'ReferenceET':
@@ -596,7 +596,7 @@ def climate_nasanex(
 
             et0 = xr.concat(et0_parts, dim='time').sortby('time')
             out = et0.to_dataset(name='ReferenceET')
-            _preproc_and_save(out, variable, yearlist, basepath, to_match, model, out_scenario, ensemble)
+            _preprocess_and_save(out, variable, yearlist, basepath, to_match, model, out_scenario, ensemble)
 
         else:
             print(f"        WARNING: '{variable}' not recognised – skipping.")

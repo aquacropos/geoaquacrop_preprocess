@@ -1,8 +1,8 @@
-preproc\_main
+preprocess\_main
 =============
 
 Main entry point for the GeoAquaCrop preprocessing pipeline.
 
-.. automodule:: geoaquacrop_preproc.preproc_main
+.. automodule:: geoaquacrop_preprocess.preprocess_main
    :members:
    :member-order: bysource

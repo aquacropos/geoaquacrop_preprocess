@@ -10,11 +10,11 @@ import pytest
 import xarray as xr
 import rioxarray  # noqa: F401 – registers .rio accessor
 
-from geoaquacrop_preproc.climate_nasanex import (
+from geoaquacrop_preprocess.climate_nasanex import (
     _scenario_for_year,
     _build_ncss_url,
     _calc_et0_xr,
-    _preproc_and_save,
+    _preprocess_and_save,
 )
 
 
@@ -174,12 +174,12 @@ def test_calc_et0_output_attrs(tropical_climate):
 
 
 # ---------------------------------------------------------------------------
-# _preproc_and_save
+# _preprocess_and_save
 # ---------------------------------------------------------------------------
 
-def test_preproc_and_save_writes_file(test_polygon_path, tmp_path):
-    """_preproc_and_save should reproject synthetic data and write a NetCDF."""
-    from geoaquacrop_preproc.preproc_tools import basegrid
+def test_preprocess_and_save_writes_file(test_polygon_path, tmp_path):
+    """_preprocess_and_save should reproject synthetic data and write a NetCDF."""
+    from geoaquacrop_preprocess.preprocess_tools import basegrid
     import geopandas as gpd
 
     template_path = str(tmp_path / "template.nc")
@@ -199,7 +199,7 @@ def test_preproc_and_save_writes_file(test_polygon_path, tmp_path):
                                   coords={"time": times, "y": lats, "x": lons})}
     )
 
-    _preproc_and_save(src, "MinTemp", [2030, 2031], str(tmp_path), to_match,
+    _preprocess_and_save(src, "MinTemp", [2030, 2031], str(tmp_path), to_match,
                       model="GFDL-CM4", scenario="ssp245", ensemble="r1i1p1f1")
 
     outfile = tmp_path / "processed" / "MinTemp20302031.nc"
@@ -210,9 +210,9 @@ def test_preproc_and_save_writes_file(test_polygon_path, tmp_path):
     result.close()
 
 
-def test_preproc_and_save_cf_attributes(test_polygon_path, tmp_path):
+def test_preprocess_and_save_cf_attributes(test_polygon_path, tmp_path):
     """Output file should carry NASA NEX provenance attributes."""
-    from geoaquacrop_preproc.preproc_tools import basegrid
+    from geoaquacrop_preprocess.preprocess_tools import basegrid
     import geopandas as gpd
 
     template_path = str(tmp_path / "template.nc")
@@ -230,7 +230,7 @@ def test_preproc_and_save_cf_attributes(test_polygon_path, tmp_path):
                                   coords={"time": times, "y": lats, "x": lons})}
     )
 
-    _preproc_and_save(src, "MaxTemp", [2030], str(tmp_path), to_match,
+    _preprocess_and_save(src, "MaxTemp", [2030], str(tmp_path), to_match,
                       model="GFDL-CM4", scenario="ssp245", ensemble="r1i1p1f1")
 
     outfile = tmp_path / "processed" / "MaxTemp20302030.nc"

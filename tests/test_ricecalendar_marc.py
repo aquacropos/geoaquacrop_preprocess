@@ -67,7 +67,7 @@ def _make_marc_ds_with_nans(lats, lons):
 @pytest.fixture
 def marc_setup(test_polygon_path, test_polygon_gdf, tmp_path):
     """Return (domain_path, basepath, template_path, marc_dir) for MARC tests."""
-    from geoaquacrop_preproc.preproc_tools import basegrid
+    from geoaquacrop_preprocess.preprocess_tools import basegrid
 
     template_path = str(tmp_path / "template.nc")
     basegrid(test_polygon_path, resolution=0.05, templategrid_path=template_path)
@@ -90,7 +90,7 @@ def marc_setup(test_polygon_path, test_polygon_gdf, tmp_path):
 
 def test_ricecalendar_marc_creates_output(marc_setup):
     """ricecalendar_marc() with a pre-existing NetCDF should produce the output file."""
-    from geoaquacrop_preproc.ricecalendar_marc import ricecalendar_marc
+    from geoaquacrop_preprocess.ricecalendar_marc import ricecalendar_marc
 
     domain_path, basepath, template_path, marc_dir, lats, lons = marc_setup
 
@@ -108,7 +108,7 @@ def test_ricecalendar_marc_creates_output(marc_setup):
 
 def test_ricecalendar_marc_output_variables(marc_setup):
     """Output should contain rf and ir planting + growing_season_length for all 3 cycles."""
-    from geoaquacrop_preproc.ricecalendar_marc import ricecalendar_marc
+    from geoaquacrop_preprocess.ricecalendar_marc import ricecalendar_marc
 
     domain_path, basepath, template_path, marc_dir, lats, lons = marc_setup
 
@@ -135,7 +135,7 @@ def test_ricecalendar_marc_output_variables(marc_setup):
 
 def test_ricecalendar_marc_planting_day_range(marc_setup):
     """Planting DOY values in output should be in [1, 366]."""
-    from geoaquacrop_preproc.ricecalendar_marc import ricecalendar_marc
+    from geoaquacrop_preprocess.ricecalendar_marc import ricecalendar_marc
 
     domain_path, basepath, template_path, marc_dir, lats, lons = marc_setup
 
@@ -163,7 +163,7 @@ def test_ricecalendar_marc_planting_day_range(marc_setup):
 
 def test_ricecalendar_marc_growing_season_length_positive(marc_setup):
     """Growing season length should be positive for all seasons."""
-    from geoaquacrop_preproc.ricecalendar_marc import ricecalendar_marc
+    from geoaquacrop_preprocess.ricecalendar_marc import ricecalendar_marc
 
     domain_path, basepath, template_path, marc_dir, lats, lons = marc_setup
 
@@ -195,7 +195,7 @@ def test_ricecalendar_marc_growing_season_length_positive(marc_setup):
 
 def test_ricecalendar_marc_year_boundary_season_length(marc_setup):
     """A season crossing year-end (harvest DOY < planting DOY) should have positive length."""
-    from geoaquacrop_preproc.ricecalendar_marc import ricecalendar_marc
+    from geoaquacrop_preprocess.ricecalendar_marc import ricecalendar_marc
 
     domain_path, basepath, template_path, marc_dir, lats, lons = marc_setup
 
@@ -225,7 +225,7 @@ def test_ricecalendar_marc_year_boundary_season_length(marc_setup):
 
 def test_ricecalendar_marc_fills_nan_gaps(marc_setup):
     """ricecalendar_marc() should fill NaN patches via nearest-neighbor gap-fill."""
-    from geoaquacrop_preproc.ricecalendar_marc import ricecalendar_marc
+    from geoaquacrop_preprocess.ricecalendar_marc import ricecalendar_marc
 
     domain_path, basepath, template_path, marc_dir, lats, lons = marc_setup
 
@@ -258,7 +258,7 @@ def test_ricecalendar_marc_fills_nan_gaps(marc_setup):
 
 def test_ricecalendar_marc_replaces_doy_60(marc_setup):
     """DOY 60 in planting day should be replaced by 61 (leap-year safety)."""
-    from geoaquacrop_preproc.ricecalendar_marc import ricecalendar_marc
+    from geoaquacrop_preprocess.ricecalendar_marc import ricecalendar_marc
 
     domain_path, basepath, template_path, marc_dir, lats, lons = marc_setup
 
@@ -290,8 +290,8 @@ def test_ricecalendar_marc_replaces_doy_60(marc_setup):
 def test_ricecalendar_marc_outside_extent_warning(test_polygon_path, test_polygon_gdf,
                                                     tmp_path, capsys):
     """When the polygon extends beyond the raster, a WARNING message is printed."""
-    from geoaquacrop_preproc.ricecalendar_marc import ricecalendar_marc
-    from geoaquacrop_preproc.preproc_tools import basegrid
+    from geoaquacrop_preprocess.ricecalendar_marc import ricecalendar_marc
+    from geoaquacrop_preprocess.preprocess_tools import basegrid
 
     template_path = str(tmp_path / "template.nc")
     basegrid(test_polygon_path, resolution=0.05, templategrid_path=template_path)
