@@ -3,7 +3,7 @@ requires = ["setuptools>=77", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "geoaquacrop.preprocess"
+name = "geoaquacrop_preprocess"
 version = "0.1.0b1"
 description = "Automated data download and preprocessing pipeline for running FAO AquaCrop over large regions in gridded format"
 readme = "README.md"
