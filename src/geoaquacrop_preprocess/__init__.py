@@ -1,12 +1,12 @@
 """
-geoaquacrop.preprocess: Automated data download and preprocessing pipeline
+geoaquacrop_preprocess: Automated data download and preprocessing pipeline
 for running FAO AquaCrop over large regions in gridded format.
 """
 
 from importlib.metadata import PackageNotFoundError, version
 
 try:
-    __version__ = version("geoaquacrop.preprocess")
+    __version__ = version("geoaquacrop_preprocess")
 except PackageNotFoundError:  # pragma: no cover - package not installed (e.g. running from source)
     __version__ = "0.0.0+unknown"
 
