@@ -416,7 +416,7 @@ def _preprocess_and_save(src, variable, yearlist, basepath, to_match, model, sce
         'cmip6_model'    : model,
         'cmip6_scenario' : scenario,
         'cmip6_ensemble' : ensemble,
-        'history'     : f'Preprocessed on {datetime.date.today().isoformat()} by geoaquacrop.preprocess.',
+        'history'     : f'Preprocessed on {datetime.date.today().isoformat()} by geoaquacrop_preprocess.',
         'references'  : 'https://www.nasa.gov/nex/gddp',
     }
 

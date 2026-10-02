@@ -1,5 +1,5 @@
 """
-Live-service / download tests for geoaquacrop.preprocess.
+Live-service / download tests for geoaquacrop_preprocess.
 
 These tests hit real external APIs and download actual data.
 They are intentionally kept separate and are only executed when the

@@ -35,9 +35,9 @@ from .validate_inputs import validate_inputs
 
 ## INPUT ARGUMENTS. REPLACE THESE WITH YOUR OWN VALUES
 # Output directory: all rawdata and processed files are written here
-workingdirectory = '/Users/ritterj1/PythonProjects/geoaquacrop.preprocess'
+workingdirectory = '/Users/ritterj1/PythonProjects/geoaquacrop_preprocess'
 # Domain: absolute path so the script can be run from any directory
-domain_path = '/Users/ritterj1/PythonProjects/geoaquacrop.preprocess/tests/test_polygon.geojson'
+domain_path = '/Users/ritterj1/PythonProjects/geoaquacrop_preprocess/tests/test_polygon.geojson'
 #domain_path = os.path.join(os.getcwd(), 'inputdata', 'mekong', 'basin_outline', 'mekong_jrc_outline.geojson')
 start_year = 2030
 end_year = 2031
