@@ -1,4 +1,4 @@
-# geoaquacrop.preprocess
+# geoaquacrop_preprocess
 
 > Automated data download and preprocessing pipeline for running FAO AquaCrop over large regions in gridded format.
 
@@ -7,7 +7,7 @@
 
 ## Overview
 
-**geoaquacrop.preprocess** prepares all spatial input datasets required to run the [FAO AquaCrop](https://www.fao.org/aquacrop) crop water productivity model over large regions (e.g. river basins, countries) in a gridded setup. Given a polygon defining the area of interest and a time period, the pipeline automatically downloads, reprojects, and harmonises the following datasets onto a common output grid:
+**geoaquacrop_preprocess** prepares all spatial input datasets required to run the [FAO AquaCrop](https://www.fao.org/aquacrop) crop water productivity model over large regions (e.g. river basins, countries) in a gridded setup. Given a polygon defining the area of interest and a time period, the pipeline automatically downloads, reprojects, and harmonises the following datasets onto a common output grid:
 
 | Dataset | Variables | Source | Native resolution |
 |---------|-----------|--------|-------------------|
@@ -37,8 +37,8 @@ Barley, Cassava, Cotton, Dry Bean, Maize, Paddy Rice (seasons 1 & 2), Potato, So
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/josiasritter/geoaquacrop.preprocess
-   cd geoaquacrop.preprocess
+   git clone https://github.com/aquacropos/geoaquacrop_preprocess
+   cd geoaquacrop_preprocess
    ```
 
 2. **Create and activate the conda environment:**
@@ -138,3 +138,43 @@ An API token is required only when processing **past climate data** (AgERA5, 197
 ## License
 
 This project is licensed under the terms described in the [LICENSE](LICENSE) file.
+
+## Data attributions
+
+geoaquacrop_preprocess does not contain any of the datasets listed below. It downloads them from the original providers when you run it, and then reprojects, resamples and harmonises them onto a common grid. If you use the outputs of this tool, please credit the original data providers and follow each provider's terms of use.
+
+### Past climate: AgERA5
+
+Daily past climate data (minimum and maximum temperature, precipitation and reference evapotranspiration) come from AgERA5, produced for the Copernicus Climate Change Service (C3S) and downloaded from the Copernicus Climate Data Store. The data are licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Changes made by this tool: regridding and harmonisation.
+
+> Contains modified Copernicus Climate Change Service information 2026. Neither the European Commission nor ECMWF is responsible for any use that may be made of this information.
+
+Boogaard, H., Schubert, J., De Wit, A., Lazebnik, J., Hutjes, R., Van der Grijn, G. (2020): Agrometeorological indicators from 1979 to present derived from reanalysis. Copernicus Climate Change Service (C3S) Climate Data Store (CDS). DOI: [10.24381/cds.6c68c9bb](https://doi.org/10.24381/cds.6c68c9bb) (accessed on DD-MMM-YYYY).
+
+### Future climate: NASA NEX-GDDP-CMIP6
+
+Future climate projections come from the NASA Earth Exchange Global Daily Downscaled Projections (NEX-GDDP-CMIP6). The dataset was prepared by the Climate Analytics Group and the NASA Ames Research Center using the NASA Earth Exchange, and is distributed by the NASA Center for Climate Simulation (NCCS). We thank the World Climate Research Programme and its Working Group on Coupled Modelling, which coordinated CMIP6. We also thank the climate modelling groups who produced and shared their model output, the Earth System Grid Federation (ESGF) for archiving and providing access, and the agencies that fund CMIP6 and ESGF. The underlying CMIP6 model output is subject to the [CMIP6 terms of use](https://pcmdi.llnl.gov/CMIP6/TermsOfUse/TermsOfUse6-1.html).
+
+- Thrasher, B., Wang, W., Michaelis, A., Melton, F., Lee, T., Nemani, R. (2022): NASA Global Daily Downscaled Projections, CMIP6. Scientific Data 9, 262. [https://doi.org/10.1038/s41597-022-01393-4](https://doi.org/10.1038/s41597-022-01393-4)
+- Thrasher, B., Wang, W., Michaelis, A., Nemani, R. (2021): NEX-GDDP-CMIP6. NASA Center for Climate Simulation. [https://doi.org/10.7917/OFSG3345](https://doi.org/10.7917/OFSG3345)
+
+### Soil: ISRIC SoilGrids
+
+Soil texture and organic matter data come from SoilGrids 2.0, produced by ISRIC – World Soil Information and licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Changes made by this tool: clipping, resampling and harmonisation.
+
+Poggio, L., de Sousa, L. M., Batjes, N. H., Heuvelink, G. B. M., Kempen, B., Ribeiro, E., Rossiter, D. (2021): SoilGrids 2.0: producing soil information for the globe with quantified spatial uncertainty. SOIL 7, 217–240. [https://doi.org/10.5194/soil-7-217-2021](https://doi.org/10.5194/soil-7-217-2021)
+
+### Crop calendar: GGCMI Phase 3
+
+Planting dates and growing season lengths come from the GGCMI Phase 3 crop calendar (v1.01), licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Changes made by this tool: regridding and conversion to AquaCrop inputs.
+
+- Jägermeyr, J., Müller, C., Minoli, S., Ray, D., Siebert, S. (2021): GGCMI Phase 3 crop calendar (v1.01) [Data set]. Zenodo. [https://doi.org/10.5281/zenodo.5062513](https://doi.org/10.5281/zenodo.5062513)
+- Jägermeyr, J., Müller, C., Ruane, A. C. et al. (2021): Climate impacts on global agriculture emerge earlier in new generation of climate and crop models. Nature Food 2, 873–885. [https://doi.org/10.1038/s43016-021-00400-y](https://doi.org/10.1038/s43016-021-00400-y)
+
+### Crop areas: SPAM (MapSPAM)
+
+Physical crop areas come from the Spatial Production Allocation Model (SPAM), developed by the International Food Policy Research Institute (IFPRI) and partners. Please check the licence of the SPAM version you use on its Harvard Dataverse page. The MapSPAM terms of use refer to a [CC BY-NC 3.0](https://creativecommons.org/licenses/by-nc/3.0/) licence, which does not allow commercial use.
+
+- SPAM 2020: International Food Policy Research Institute (IFPRI), 2026, "Global Spatially-Disaggregated Crop Production Statistics Data for 2020 Version 2.0 Release 2", [https://doi.org/10.7910/DVN/SWPENT](https://doi.org/10.7910/DVN/SWPENT), Harvard Dataverse, V5
+- SPAM 2010: International Food Policy Research Institute, 2019, "Global Spatially-Disaggregated Crop Production Statistics Data for 2010 Version 2.0", [https://doi.org/10.7910/DVN/PRFF8V](https://doi.org/10.7910/DVN/PRFF8V), Harvard Dataverse, V4
+- Yu, Q., You, L., Wood-Sichra, U., Ru, Y., Joglekar, A. K. B., Fritz, S., Xiong, W., Lu, M., Wu, W., Yang, P. (2020): A cultivated planet in 2010 – Part 2: The global gridded agricultural-production maps. Earth System Science Data 12, 3545–3572. [https://doi.org/10.5194/essd-12-3545-2020](https://doi.org/10.5194/essd-12-3545-2020)

@@ -15,8 +15,8 @@ Steps
 
 1. Clone the repository::
 
-      git clone https://github.com/josiasritter/geoaquacrop.preprocess
-      cd geoaquacrop.preprocess
+      git clone https://github.com/aquacropos/geoaquacrop_preprocess
+      cd geoaquacrop_preprocess
 
 2. Create and activate the conda environment::
 
