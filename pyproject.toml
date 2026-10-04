@@ -13,7 +13,7 @@ requires-python = ">=3.11"
 authors = [
     { name = "Josias Lang-Ritter" },
     { name = "Chris Bowden" },
-    { name = "Seyed Hosseini" },
+    { name = "Seyed Hossein Hosseini" },
     { name = "Henrikki Tenkanen" },
     { name = "Tim Foster" },
     ]
