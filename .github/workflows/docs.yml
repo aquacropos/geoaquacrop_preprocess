@@ -1,0 +1,44 @@
+# Build the documentation on every push and pull request.
+#
+# ReadTheDocs performs the actual deployment from its own webhook, configured by
+# .readthedocs.yaml, so this workflow only proves the docs still build. It
+# catches a broken build in a pull request rather than after merge, when RTD
+# would be the first to tell you.
+name: docs
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # some Sphinx extensions read git history
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install the package and its docs dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install ".[docs]"
+
+      # No -W here, matching fail_on_warning: false in .readthedocs.yaml. Once
+      # the existing warnings are cleared, add -W --keep-going so new ones fail
+      # the build, and set fail_on_warning: true to match.
+      - name: Build HTML
+        run: sphinx-build -b html --keep-going docs docs/_build/html
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: docs-html
+          path: docs/_build/html
