@@ -51,7 +51,7 @@ docs = [
 ]
 
 [project.urls]
-Documentation = "https://geoaquacrop-preprocess.readthedocs.io/en/stable/"
+Documentation = "https://geoaquacrop-preprocess.readthedocs.io/en/latest/"
 Homepage = "https://github.com/aquacropos/geoaquacrop_preprocess"
 Preprocessing = "https://github.com/aquacropos/geoaquacrop_preprocess"
 Visualization = "https://github.com/aquacropos/geoaquacrop_visualize"

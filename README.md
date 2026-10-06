@@ -32,7 +32,7 @@ Barley, Cassava, Cotton, Dry Bean, Maize, Paddy Rice (seasons 1 & 2), Potato, So
 
 ## Documentation
 
-Full documentation is available at <https://geoaquacrop-preprocessing.readthedocs.io/en/latest/>.
+Full documentation is available at <https://geoaquacrop-preprocess.readthedocs.io/en/latest/>.
 
 ## Prerequisites
 
