@@ -1,6 +1,6 @@
 # geoaquacrop_preprocess
 
-> Automated data download and preprocessing pipeline for running FAO AquaCrop over large regions in gridded format.
+> Automated data download and preprocessing pipeline for running AquaCrop-OSPy over large regions in gridded format.
 
 ![Python](https://img.shields.io/badge/python-3.11%2B-blue)
 ![License](https://img.shields.io/badge/license-Apache%20License%202.0-blue)
@@ -9,7 +9,7 @@
 
 This package is the data preparation stage of [**GeoAquaCrop**](https://github.com/aquacropos/geoaquacrop), the umbrella repository that combines preprocessing, simulation and visualisation. GeoAquaCrop is distributed as a Python package (`pip install geoaquacrop`), where this stage is available as `geoaquacrop.preprocess`.
 
-**geoaquacrop_preprocess** prepares all spatial input datasets required to run the [FAO AquaCrop](https://www.fao.org/aquacrop) crop water productivity model over large regions (e.g. river basins, countries) in a gridded setup. Given a polygon defining the area of interest and a time period, the pipeline automatically downloads, reprojects, and harmonises the following datasets onto a common output grid:
+**geoaquacrop_preprocess** prepares all spatial input datasets required to run the [AquaCrop-OSPy](https://github.com/aquacropos/aquacrop) crop water productivity model over large regions (e.g. river basins, countries) in a gridded setup. Given a polygon defining the area of interest and a time period, the pipeline automatically downloads, reprojects, and harmonises the following datasets onto a common output grid:
 
 | Dataset | Variables | Source | Native resolution |
 |---------|-----------|--------|-------------------|

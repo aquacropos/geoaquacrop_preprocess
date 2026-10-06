@@ -11,7 +11,7 @@ sys.path.insert(0, os.path.abspath("../src"))
 # ---------------------------------------------------------------------------
 project = "geoaquacrop-preprocess"
 author = "Josias Ritter"
-copyright = "2026, Josias Ritter"
+copyright = "2026, Josias Lang-Ritter"
 
 # Version is read from the installed package metadata, which is kept in sync
 # with pyproject.toml.  When the package is not installed, fall back to the
@@ -76,6 +76,8 @@ intersphinx_mapping = {
     "xarray": ("https://docs.xarray.dev/en/stable", None),
     "pandas": ("https://pandas.pydata.org/docs", None),
     "geopandas": ("https://geopandas.org/en/stable", None),
+    "simulate": ("https://geoaquacrop-simulate.readthedocs.io/en/stable/",      None),
+    "visualize": ("https://geoaquacrop-visualize.readthedocs.io/en/stable/",      None)
 }
 
 # ---------------------------------------------------------------------------
