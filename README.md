@@ -1,9 +1,35 @@
-# geoaquacrop_preprocess
+<p align="center">
+  <img src="https://raw.githubusercontent.com/aquacropos/geoaquacrop_preprocess/main/docs/_static/logo-mark.png"
+       alt="" width="130">
+</p>
 
-> Automated data download and preprocessing pipeline for running AquaCrop-OSPy over large regions in gridded format.
+<h1 align="center">geoaquacrop_preprocess</h1>
 
-![Python](https://img.shields.io/badge/python-3.11%2B-blue)
-![License](https://img.shields.io/badge/license-Apache%20License%202.0-blue)
+<p align="center">Automated data download and preprocessing pipeline for running AquaCrop-OSPy over large regions in gridded format.</p>
+
+<p align="center">
+  <a href="https://pypi.org/project/geoaquacrop-preprocess/"><img src="https://img.shields.io/pypi/v/geoaquacrop-preprocess" alt="PyPI"></a>
+  <a href="https://pypi.org/project/geoaquacrop-preprocess/"><img src="https://img.shields.io/pypi/pyversions/geoaquacrop-preprocess" alt="Python"></a>
+  <a href="https://geoaquacrop-preprocess.readthedocs.io/en/latest/"><img src="https://img.shields.io/readthedocs/geoaquacrop-preprocess" alt="Docs"></a>
+  <a href="https://github.com/aquacropos/geoaquacrop_preprocess/actions/workflows/ci.yml"><img src="https://github.com/aquacropos/geoaquacrop_preprocess/actions/workflows/ci.yml/badge.svg" alt="Tests"></a>
+  <a href="https://github.com/aquacropos/geoaquacrop_preprocess/blob/main/LICENSE"><img src="https://img.shields.io/badge/licence-Apache%202.0-blue" alt="Licence"></a>
+</p>
+
+## Install
+
+```bash
+pip install geoaquacrop_preprocess
+```
+
+Or install the whole toolchain in one go:
+
+```bash
+pip install geoaquacrop
+```
+
+Requires Python 3.11+. For past climate data (AgERA5) you also need a free
+[Copernicus CDS account](https://cds.climate.copernicus.eu/) and your personal API token
+(see [Prerequisites](#prerequisites)).
 
 ## Overview
 
@@ -30,32 +56,16 @@ All outputs are written as compressed NetCDF files on a shared spatial grid at t
 
 Barley, Cassava, Cotton, Dry Bean, Maize, Paddy Rice (seasons 1 & 2), Potato, Sorghum, Soybean, Sugar Beet, Sugar Cane, Sunflower, Wheat (summer & winter)
 
-## Documentation
-
-Full documentation is available at <https://geoaquacrop-preprocess.readthedocs.io/en/latest/>.
-
 ## Prerequisites
 
-- [Miniconda](https://docs.conda.io/en/latest/miniconda.html) or [Anaconda](https://www.anaconda.com/)
+- Optional: [Miniconda](https://docs.conda.io/en/latest/miniconda.html) or [Anaconda](https://www.anaconda.com/) to manage the Python environment
 - **For past climate (AgERA5) only:** a free [Copernicus CDS account](https://cds.climate.copernicus.eu/) and your personal API token
-
-## Installation
-
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/aquacropos/geoaquacrop_preprocess
-   cd geoaquacrop_preprocess
-   ```
-
-2. **Create and activate the conda environment:**
-   ```bash
-   conda env create -f environment.yml
-   conda activate geoaquacrop
-   ```
 
 ## Quick start
 
 ### Option A — edit and run the main script
+
+This option needs a source checkout (see [Development](#development)).
 
 Open `src/geoaquacrop_preprocess/preprocess_main.py`, set the input arguments at the top of the file, and run:
 
@@ -140,6 +150,31 @@ An API token is required only when processing **past climate data** (AgERA5, 197
 1. Create a free account at https://cds.climate.copernicus.eu/
 2. Go to **Your profile -> API Token** and copy your token
 3. Accept the dataset terms of use at the [AgERA5 download page](https://cds.climate.copernicus.eu/datasets/sis-agrometeorological-indicators?tab=download)
+
+## Documentation
+
+Full documentation is available at <https://geoaquacrop-preprocess.readthedocs.io/en/latest/>.
+
+## Development
+
+To work on the package itself:
+
+```bash
+git clone https://github.com/aquacropos/geoaquacrop_preprocess
+cd geoaquacrop_preprocess
+conda env create -f environment.yml
+conda activate geoaquacrop
+python -m pip install -e ".[dev]"
+```
+
+Run the tests:
+
+```bash
+python -m pytest -q
+```
+
+Tests that need live network access are marked `download`; skip them with
+`python -m pytest -q -m "not download"`.
 
 ## License
 
