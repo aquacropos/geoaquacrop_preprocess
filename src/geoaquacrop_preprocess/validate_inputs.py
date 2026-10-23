@@ -3,14 +3,15 @@ import geopandas as gpd
 from datetime import datetime
 
 
-def validate_inputs(domain_path, start_year, end_year, api_token):
+def validate_inputs(domain_path, start_year, end_year, api_token=None, preprocess=None):
     """Validate user-supplied inputs before running the preprocessing pipeline.
 
     Checks that the domain polygon file exists and contains valid Polygon or
     MultiPolygon geometries in EPSG:4326, that the year range is plausible, and —
     when AgERA5 is the selected climate source — that the API token is non-empty.
     Prints informational messages about the detected climate data source and domain
-    extents.
+    extents. Climate-specific checks (source selection and API token) only run
+    when ``'climate'`` is among the requested preprocessing steps.
 
     Args:
         domain_path (str): Path to the domain polygon file (GeoJSON or shapefile).
@@ -18,7 +19,10 @@ def validate_inputs(domain_path, start_year, end_year, api_token):
         end_year (int): Last year of the modelling period (inclusive).
         api_token (str): Copernicus CDS API token. Only validated when AgERA5 is
             the selected climate source (i.e. 1979 <= start_year and end_year <
-            current year).
+            current year) and ``'climate'`` is in ``preprocess``.
+        preprocess (list[str], optional): Preprocessing steps that will be run.
+            Defaults to ``None``, which is treated as all steps (climate checks
+            included).
 
     Raises:
         FileNotFoundError: If ``domain_path`` does not exist on disk.
@@ -79,6 +83,11 @@ def validate_inputs(domain_path, start_year, end_year, api_token):
         raise ValueError(f"❌ start_year ({start_year}) cannot be greater than end_year ({end_year}).")
 
     # --- 7. Select climate data source and validate accordingly ---
+    # Only relevant when climate data is requested; other datasets need no API token.
+    if preprocess is not None and 'climate' not in preprocess:
+        print("✅ All input checks passed successfully.")
+        return
+
     # AgERA5 is available from 1979 up to (but not including) the current year.
     # Use NASA NEX-GDDP-CMIP6 for any period outside that window.
     AGERA5_START = 1979

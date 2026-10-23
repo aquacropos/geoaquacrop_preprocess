@@ -64,7 +64,7 @@ def _run_with_mocks(test_polygon_path, tmp_path, preprocess, start_year=2030, en
 def test_preprocess_main_calls_validate_inputs(test_polygon_path, tmp_path):
     mocks = _run_with_mocks(test_polygon_path, tmp_path, preprocess=[])
     mocks["validate"].assert_called_once_with(
-        test_polygon_path, 2030, 2031, "dummy"
+        test_polygon_path, 2030, 2031, "dummy", []
     )
 
 
@@ -187,3 +187,24 @@ def test_preprocess_main_all_steps_called(test_polygon_path, tmp_path):
     mocks["crop_areas"].assert_called_once()
     mocks["cropcalendar"].assert_called_once()
     mocks["agera5"].assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# Single-dataset wrappers do not require an API token
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("wrapper_name, step, mock_path", [
+    ("soil", "soil", "geoaquacrop_preprocess.soil.soil"),
+    ("crop_area", "crop_areas", "geoaquacrop_preprocess.crop_areas.crop_areas"),
+    ("crop_calendar", "crop_calendar", "geoaquacrop_preprocess.cropcalendar_module.cropcalendar"),
+])
+def test_single_dataset_wrappers_run_without_api_token(test_polygon_path, tmp_path,
+                                                       wrapper_name, step, mock_path):
+    """Non-climate wrappers must pass real input validation for AgERA5-window years without a token."""
+    import geoaquacrop_preprocess.preprocess_main as pm
+
+    with (patch(f"{_MOCK_TARGET}.basegrid", return_value=(MagicMock(), [0, 0, 1, 1])),
+          patch(mock_path) as m_step):
+        getattr(pm, wrapper_name)(test_polygon_path, 2020, 2020,
+                                  cell_resolution=0.1, workingdirectory=str(tmp_path))
+    m_step.assert_called_once()
