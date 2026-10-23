@@ -605,3 +605,79 @@ def test_safe_clip_reprojects_mask_to_match_raster_crs(test_polygon_gdf, tmp_pat
 
     assert isinstance(clipped, xr.Dataset)
 
+
+
+# ---------------------------------------------------------------------------
+# get_with_retries / download_url (requests mocked, no network)
+# ---------------------------------------------------------------------------
+
+def _response(status, content=b"data"):
+    import requests
+    r = requests.Response()
+    r.status_code = status
+    r.reason = "reason"
+    r._content = content
+    return r
+
+
+@pytest.fixture
+def no_sleep(monkeypatch):
+    monkeypatch.setattr("geoaquacrop_preprocess.preprocess_tools.time.sleep", lambda s: None)
+
+
+def test_get_with_retries_4xx_raises_immediately(monkeypatch, no_sleep):
+    import requests
+    from geoaquacrop_preprocess.preprocess_tools import get_with_retries
+    calls = []
+    monkeypatch.setattr("geoaquacrop_preprocess.preprocess_tools.requests.get",
+                        lambda url, timeout: calls.append(url) or _response(404))
+    with pytest.raises(requests.HTTPError, match="404"):
+        get_with_retries("https://example.org/missing")
+    assert len(calls) == 1
+
+
+def test_get_with_retries_5xx_gives_up_after_max_retries(monkeypatch, no_sleep):
+    import requests
+    from geoaquacrop_preprocess.preprocess_tools import get_with_retries
+    calls = []
+    monkeypatch.setattr("geoaquacrop_preprocess.preprocess_tools.requests.get",
+                        lambda url, timeout: calls.append(url) or _response(503))
+    with pytest.raises(requests.HTTPError, match="503"):
+        get_with_retries("https://example.org/down", max_retries=3)
+    assert len(calls) == 4
+
+
+def test_get_with_retries_recovers_after_transient_errors(monkeypatch, no_sleep):
+    import requests
+    from geoaquacrop_preprocess.preprocess_tools import get_with_retries
+    outcomes = [requests.ConnectionError("dropped"), _response(500), _response(429), _response(200, b"ok")]
+
+    def fake_get(url, timeout):
+        o = outcomes.pop(0)
+        if isinstance(o, Exception):
+            raise o
+        return o
+
+    monkeypatch.setattr("geoaquacrop_preprocess.preprocess_tools.requests.get", fake_get)
+    assert get_with_retries("https://example.org/flaky").content == b"ok"
+
+
+def test_get_with_retries_network_error_gives_up(monkeypatch, no_sleep):
+    import requests
+    from geoaquacrop_preprocess.preprocess_tools import get_with_retries
+
+    def fake_get(url, timeout):
+        raise requests.Timeout("timed out")
+
+    monkeypatch.setattr("geoaquacrop_preprocess.preprocess_tools.requests.get", fake_get)
+    with pytest.raises(requests.Timeout):
+        get_with_retries("https://example.org/slow", max_retries=2)
+
+
+def test_download_url_writes_file(monkeypatch, no_sleep, tmp_path):
+    from geoaquacrop_preprocess.preprocess_tools import download_url
+    monkeypatch.setattr("geoaquacrop_preprocess.preprocess_tools.requests.get",
+                        lambda url, timeout: _response(200, b"payload"))
+    out = tmp_path / "file.bin"
+    download_url("https://example.org/file", download_path=str(out))
+    assert out.read_bytes() == b"payload"

@@ -5,7 +5,41 @@ import xarray as xr
 import rioxarray as rio
 from shapely.geometry import mapping
 from rasterio.warp import Resampling
-from .preprocess_tools import download_url, unzip_all, ensure_xy_dims, makedirs, safe_clip
+from .preprocess_tools import download_url, get_with_retries, ensure_xy_dims, makedirs, safe_clip
+
+
+def download_ggcmi_files(record_url, target_dir):
+    """Download all files of a Zenodo record into ``target_dir``.
+
+    Reads the file listing from the Zenodo record API and fetches each file
+    from its own URL. Files are first written to ``<target_dir>.partial`` and
+    the folder is renamed to ``target_dir`` only once every file is complete,
+    so an interrupted run never leaves an incomplete ``target_dir`` behind.
+    Files already present in the partial folder with the expected size are
+    not downloaded again.
+
+    Args:
+        record_url (str): Zenodo record API URL, e.g.
+            ``'https://zenodo.org/api/records/5062513'``.
+        target_dir (str): Directory where the files are saved.
+    """
+    print("Downloading GGCMI crop calendar data")
+    print('Record:', record_url)
+    files = get_with_retries(record_url).json()['files']
+
+    partial_dir = target_dir + '.partial'
+    os.makedirs(partial_dir, exist_ok=True)
+    for i, f in enumerate(files, start=1):
+        file_path = os.path.join(partial_dir, f['key'])
+        if os.path.exists(file_path) and os.path.getsize(file_path) == f['size']:
+            continue
+        print(f"  [{i}/{len(files)}] {f['key']}")
+        download_url(f['links']['self'], download_path=file_path)
+        if os.path.getsize(file_path) != f['size']:
+            raise IOError(f"Incomplete download of {f['key']}: expected {f['size']} bytes, "
+                          f"got {os.path.getsize(file_path)}.")
+
+    os.replace(partial_dir, target_dir)
 
 
 def cropcalendar(domain_path, basepath, referenceraster_path, mask=None, to_match=None):
@@ -40,25 +74,17 @@ def cropcalendar(domain_path, basepath, referenceraster_path, mask=None, to_matc
     
     print("        *** DOWNLOADING GGCMI CROP CALENDAR DATA ***")
     ## Download crop calendar dataset from GGCMI (Jägermeyr et al. 2021; https://zenodo.org/records/5062513)
-    url = 'https://zenodo.org/api/records/5062513/files-archive'
+    # The Zenodo files-archive (zip bundle) endpoint is no longer available, so each file
+    # is fetched from its own URL as listed by the record API.
+    record_url = 'https://zenodo.org/api/records/5062513'
     target_dir = makedirs(basepath, 'rawdata', 'cropcalendar')
-    download_path = os.path.join(target_dir, 'ggcmi_cropcalendar.zip')
-    unzipped_download_directory = download_path[:-4]  # assumes unzip goes to same-named folder
+    unzipped_download_directory = os.path.join(target_dir, 'ggcmi_cropcalendar')
 
-    #  Skip everything if already unzipped
+    #  Skip everything if already downloaded
     if os.path.exists(unzipped_download_directory):
-        print(f"GGCMI crop calendar already unzipped, skipping: {unzipped_download_directory}")
+        print(f"GGCMI crop calendar already downloaded, skipping: {unzipped_download_directory}")
     else:
-        #  Skip download if ZIP exists
-        if os.path.exists(download_path):
-            print(f"ZIP already exists, skipping download: {download_path}")
-        else:
-            print("Downloading GGCMI crop calendar data")
-            print('URL:', url)
-            download_url(url, download_path=download_path)
-
-        print("Unzipping GGCMI crop calendar data...")
-        unzip_all(dir=target_dir)
+        download_ggcmi_files(record_url, unzipped_download_directory)
 
 
     ## Convert separate files to rasterstack, reproject (nearest neighbour) to 0.05 degrees, and clip to domain

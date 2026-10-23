@@ -19,26 +19,72 @@ from shapely.geometry import mapping, box
 
 ## Download functions
 
-def download_url(url, download_path="./"):
-    """Download a file from a URL to disk, retrying silently on network errors.
+def get_with_retries(url, max_retries=5, timeout=30, backoff=2):
+    """Send a GET request, retrying on network errors and server-side failures.
+
+    Network errors (timeouts, dropped connections), 5xx server errors and
+    429 Too Many Requests are retried up to ``max_retries`` times with
+    exponential backoff. Any other 4xx client error (e.g. 404 Not Found) is
+    raised immediately, since retrying will not fix it.
+
+    Args:
+        url (str): URL to request.
+        max_retries (int): Maximum number of retries after the first attempt.
+            Defaults to ``5``.
+        timeout (float): Per-request timeout in seconds. Defaults to ``30``.
+        backoff (float): Base wait in seconds between retries; doubles after
+            each retry (capped at 60 s). Defaults to ``2``.
+
+    Returns:
+        requests.Response: The successful (2xx) response.
+
+    Raises:
+        requests.HTTPError: On a non-retryable 4xx response, or when a 5xx/429
+            response persists after all retries.
+        requests.RequestException: When a network error persists after all
+            retries.
+    """
+    for attempt in range(max_retries + 1):
+        try:
+            response = requests.get(url, timeout=timeout)
+        except requests.RequestException as e:
+            error = e
+            print(f"    *** WARNING! Download failed due to a network error ({type(e).__name__}: {e}).")
+        else:
+            if response.ok:
+                return response
+            error = requests.HTTPError(f"HTTP {response.status_code} {response.reason} for URL: {url}",
+                                       response=response)
+            if 400 <= response.status_code < 500 and response.status_code != 429:
+                print(f"    *** ERROR! {error}. Not retrying.")
+                raise error
+            print(f"    *** WARNING! Server returned HTTP {response.status_code} {response.reason}.")
+
+        if attempt < max_retries:
+            wait = min(backoff * 2 ** attempt, 60)
+            print(f"    Retrying in {wait} s (retry {attempt + 1} of {max_retries})...")
+            time.sleep(wait)
+
+    print(f"    *** ERROR! Download failed after {max_retries} retries: {url}")
+    raise error
+
+
+def download_url(url, download_path="./", max_retries=5, timeout=30):
+    """Download a file from a URL to disk.
+
+    Retries on network errors and 5xx server errors, and fails immediately on
+    4xx client errors. See `get_with_retries` for details.
 
     Args:
         url (str): URL of the file to download.
         download_path (str): Local file path where the download is saved.
             Defaults to ``"./"``.
+        max_retries (int): Maximum number of retries. Defaults to ``5``.
+        timeout (float): Per-request timeout in seconds. Defaults to ``30``.
     """
-    while True:
-        try:
-            response = requests.get(url, timeout=30)
-        except:
-            print("    *** WARNING! Download froze, likely due to network instability. Restarting download...")
-            time.sleep(2)
-        else:
-            if response.ok:
-                # inmemory = tiff.imread(io.BytesIO(response.content))  # reads download data directly to memory (without writing to disk)
-                with open(download_path, 'wb') as savefile:
-                    savefile.write(response.content)  # write download data to disk
-                break
+    response = get_with_retries(url, max_retries=max_retries, timeout=timeout)
+    with open(download_path, 'wb') as savefile:
+        savefile.write(response.content)  # write download data to disk
 
 def unzip_all(dir='.'):
     """Recursively unzip all ZIP archives found under a directory.
