@@ -311,3 +311,59 @@ def test_cropcalendar_output_planting_range(test_polygon_path, test_polygon_gdf,
         assert np.all(non_nan >= 1) and np.all(non_nan <= 366), \
             f"Planting day out of [1, 366] range: min={non_nan.min()}, max={non_nan.max()}"
     result.close()
+
+
+# ---------------------------------------------------------------------------
+# GGCMI download via Zenodo record API (requests mocked, no network)
+# ---------------------------------------------------------------------------
+
+def _mock_zenodo(monkeypatch, files, calls):
+    import requests
+    record_url = "https://zenodo.org/api/records/5062513"
+    record = {"files": [{"key": k, "size": len(v),
+                         "links": {"self": f"{record_url}/files/{k}/content"}} for k, v in files.items()]}
+
+    def fake_get(url, timeout):
+        calls.append(url)
+        r = requests.Response()
+        r.status_code = 200
+        if url == record_url:
+            import json
+            r._content = json.dumps(record).encode()
+        else:
+            r._content = files[url.split("/files/")[1][:-len("/content")]]
+        return r
+
+    monkeypatch.setattr("geoaquacrop_preprocess.preprocess_tools.requests.get", fake_get)
+    return record_url
+
+
+def test_download_ggcmi_files_fetches_each_record_file(monkeypatch, tmp_path):
+    from geoaquacrop_preprocess.cropcalendar_module import download_ggcmi_files
+    files = {"mai_rf_ggcmi_crop_calendar_phase3_v1.01.nc4": b"maize",
+             "wwh_ir_ggcmi_crop_calendar_phase3_v1.01.nc4": b"winter wheat"}
+    calls = []
+    record_url = _mock_zenodo(monkeypatch, files, calls)
+    target = tmp_path / "ggcmi_cropcalendar"
+
+    download_ggcmi_files(record_url, str(target))
+
+    assert {p.name: p.read_bytes() for p in target.iterdir()} == files
+    assert not (tmp_path / "ggcmi_cropcalendar.partial").exists()
+    assert len(calls) == 1 + len(files)
+
+
+def test_download_ggcmi_files_resumes_partial_download(monkeypatch, tmp_path):
+    from geoaquacrop_preprocess.cropcalendar_module import download_ggcmi_files
+    files = {"mai_rf_ggcmi_crop_calendar_phase3_v1.01.nc4": b"maize",
+             "wwh_ir_ggcmi_crop_calendar_phase3_v1.01.nc4": b"winter wheat"}
+    partial = tmp_path / "ggcmi_cropcalendar.partial"
+    partial.mkdir()
+    (partial / "mai_rf_ggcmi_crop_calendar_phase3_v1.01.nc4").write_bytes(b"maize")
+    calls = []
+    record_url = _mock_zenodo(monkeypatch, files, calls)
+
+    download_ggcmi_files(record_url, str(tmp_path / "ggcmi_cropcalendar"))
+
+    assert not any("mai_rf" in c for c in calls)
+    assert (tmp_path / "ggcmi_cropcalendar" / "wwh_ir_ggcmi_crop_calendar_phase3_v1.01.nc4").exists()
