@@ -50,7 +50,7 @@ nasanex_scenario = 'ssp245'     # SSP scenario for years >= 2015: 'ssp126', 'ssp
 nasanex_ensemble = 'r1i1p1f1'   # ensemble member (check catalog for model-specific members)
 
 ##
-def run(domain_shape_path, start_year, end_year, api_token, cell_resolution=0.05, preprocess=['soil', 'crop_areas', 'crop_calendar', 'climate'],
+def run(domain_shape_path, start_year, end_year, api_token=None, cell_resolution=0.05, preprocess=['soil', 'crop_areas', 'crop_calendar', 'climate'],
         nasanex_model='GFDL-CM4', nasanex_scenario='ssp245', nasanex_ensemble='r1i1p1f1', workingdirectory=None):
     """Run the full GeoAquaCrop preprocessing pipeline.
 
@@ -66,9 +66,10 @@ def run(domain_shape_path, start_year, end_year, api_token, cell_resolution=0.05
             MultiPolygon geometries.
         start_year (int): First year of the modelling period.
         end_year (int): Last year of the modelling period (inclusive).
-        api_token (str): Personal API token from the Copernicus Climate Data
-            Store (https://cds.climate.copernicus.eu/). Required only when the
-            period falls within AgERA5 availability (1979 to last complete year).
+        api_token (str, optional): Personal API token from the Copernicus Climate
+            Data Store (https://cds.climate.copernicus.eu/). Required only when
+            ``'climate'`` is in ``preprocess`` and the period falls within AgERA5
+            availability (1979 to last complete year).
         cell_resolution (float): Output grid resolution in decimal degrees.
             Default is ``0.05`` (≈ 3 arcmin). Note that most input datasets have
             a coarser native resolution (e.g. 0.25° for NASA NEX climate data),
@@ -89,12 +90,13 @@ def run(domain_shape_path, start_year, end_year, api_token, cell_resolution=0.05
         workingdirectory = os.getcwd()
 
     # Validate user inputs
-    validate_inputs(domain_shape_path, start_year, end_year, api_token)
+    validate_inputs(domain_shape_path, start_year, end_year, api_token, preprocess)
 
     # Read domain mask GeoDataFrame once; shared by all preprocessing modules to avoid repeated file I/O
     mask = gpd.read_file(domain_shape_path)
 
     # Create template raster file from domain shape for all other datasets to align
+    os.makedirs(workingdirectory, exist_ok=True)
     templategrid_path = os.path.join(workingdirectory, 'template_grid.nc')
     to_match, bounds = basegrid(domain_shape_path, cell_resolution, templategrid_path)
 
@@ -138,7 +140,7 @@ def run(domain_shape_path, start_year, end_year, api_token, cell_resolution=0.05
 geoaquacrop_preprocess = run
 
 
-def weather(domain_shape_path, start_year, end_year, api_token, cell_resolution=0.05,
+def weather(domain_shape_path, start_year, end_year, api_token=None, cell_resolution=0.05,
             nasanex_model='GFDL-CM4', nasanex_scenario='ssp245', nasanex_ensemble='r1i1p1f1',
             workingdirectory=None):
     """Download and preprocess climate data only. See `run` for argument details."""
@@ -149,19 +151,19 @@ def weather(domain_shape_path, start_year, end_year, api_token, cell_resolution=
 
 def soil(domain_shape_path, start_year, end_year, cell_resolution=0.05, workingdirectory=None):
     """Download and preprocess soil data only. See `run` for argument details."""
-    return run(domain_shape_path, start_year, end_year, api_token='', cell_resolution=cell_resolution,
+    return run(domain_shape_path, start_year, end_year, cell_resolution=cell_resolution,
                preprocess=['soil'], workingdirectory=workingdirectory)
 
 
 def crop_calendar(domain_shape_path, start_year, end_year, cell_resolution=0.05, workingdirectory=None):
     """Download and preprocess crop calendar data only. See `run` for argument details."""
-    return run(domain_shape_path, start_year, end_year, api_token='', cell_resolution=cell_resolution,
+    return run(domain_shape_path, start_year, end_year, cell_resolution=cell_resolution,
                preprocess=['crop_calendar'], workingdirectory=workingdirectory)
 
 
 def crop_area(domain_shape_path, start_year, end_year, cell_resolution=0.05, workingdirectory=None):
     """Download and preprocess crop area data only. See `run` for argument details."""
-    return run(domain_shape_path, start_year, end_year, api_token='', cell_resolution=cell_resolution,
+    return run(domain_shape_path, start_year, end_year, cell_resolution=cell_resolution,
                preprocess=['crop_areas'], workingdirectory=workingdirectory)
 
 

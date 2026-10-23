@@ -94,6 +94,19 @@ def test_non_string_api_token_raises_for_agera5(test_polygon_path):
         validate_inputs(test_polygon_path, start_year=2000, end_year=2008, api_token=12345)
 
 
+@pytest.mark.parametrize("api_token", [None, "", "short"])
+def test_api_token_not_checked_without_climate(test_polygon_path, api_token):
+    """No token is needed for AgERA5-window years when climate is not requested."""
+    validate_inputs(test_polygon_path, start_year=2000, end_year=2008, api_token=api_token,
+                    preprocess=["soil", "crop_areas", "crop_calendar"])
+
+
+def test_api_token_checked_when_climate_requested(test_polygon_path):
+    with pytest.raises(TypeError, match="API token"):
+        validate_inputs(test_polygon_path, start_year=2000, end_year=2008, api_token=None,
+                        preprocess=["climate"])
+
+
 # ---------------------------------------------------------------------------
 # CRS validation (lines 49 and 53 in validate_inputs)
 # ---------------------------------------------------------------------------
