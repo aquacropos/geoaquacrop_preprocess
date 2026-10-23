@@ -96,6 +96,7 @@ def run(domain_shape_path, start_year, end_year, api_token=None, cell_resolution
     mask = gpd.read_file(domain_shape_path)
 
     # Create template raster file from domain shape for all other datasets to align
+    os.makedirs(workingdirectory, exist_ok=True)
     templategrid_path = os.path.join(workingdirectory, 'template_grid.nc')
     to_match, bounds = basegrid(domain_shape_path, cell_resolution, templategrid_path)
 

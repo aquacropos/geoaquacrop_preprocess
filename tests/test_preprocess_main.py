@@ -171,6 +171,14 @@ def test_preprocess_main_default_workingdir_is_cwd(test_polygon_path, tmp_path, 
     # If we reach here without raising, the default was accepted
 
 
+def test_preprocess_main_creates_missing_workingdir(test_polygon_path, tmp_path):
+    """A non-existent workingdirectory should be created before the template grid is written."""
+    workdir = tmp_path / "does" / "not" / "exist"
+    geoaquacrop_preprocess(test_polygon_path, 2030, 2031, preprocess=[], cell_resolution=0.1,
+                           workingdirectory=str(workdir))
+    assert (workdir / "template_grid.nc").exists()
+
+
 # ---------------------------------------------------------------------------
 # Multiple steps in a single call
 # ---------------------------------------------------------------------------
