@@ -27,7 +27,7 @@ copyright = "2026, Josias Lang-Ritter"
 try:
     release = importlib.metadata.version("geoaquacrop_preprocess")
 except importlib.metadata.PackageNotFoundError:
-    release = "0.1.3"
+    release = "0.1.4"
 version = ".".join(release.split(".")[:2])  # short X.Y version shown in sidebar
 
 # ---------------------------------------------------------------------------
