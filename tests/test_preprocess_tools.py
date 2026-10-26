@@ -681,3 +681,39 @@ def test_download_url_writes_file(monkeypatch, no_sleep, tmp_path):
     out = tmp_path / "file.bin"
     download_url("https://example.org/file", download_path=str(out))
     assert out.read_bytes() == b"payload"
+
+
+@pytest.mark.parametrize("variable,raw_name", [
+    ("Precipitation", "Precipitation_Flux"),
+    ("ReferenceET", "ReferenceET_PenmanMonteith_FAO56"),
+])
+def test_preprocess_agera5_gap_fills_nan_instead_of_zeroing(variable, raw_name, tmp_path):
+    """Missing cells must be gap-filled from neighbours, not set to 0 by the negative-value clamp."""
+    import pandas as pd
+    from geoaquacrop_preprocess.preprocess_tools import preprocess_agera5
+
+    lats = np.array([12.0, 11.0, 10.0])
+    lons = np.array([100.0, 101.0, 102.0])
+    times = pd.date_range("2020-01-01", periods=2)
+    to_match = _make_to_match(lats, lons)
+
+    data = np.full((2, 3, 3), 5.0, dtype=np.float32)
+    data[:, 1, 1] = np.nan    # missing cell inside the domain
+    data[:, 0, 0] = -0.2      # negative value, still clamped to 0
+    src = xr.Dataset(
+        {
+            raw_name: xr.DataArray(
+                data, dims=["time", "latitude", "longitude"],
+                coords={"time": times, "latitude": lats, "longitude": lons},
+            ),
+            "crs": xr.DataArray(0),
+        }
+    )
+
+    preprocess_agera5(src, variable, [2020], str(tmp_path), to_match)
+
+    result = xr.open_dataset(str(tmp_path / "processed" / f"{variable}20202020.nc"))
+    values = result[variable].values
+    assert np.allclose(values[:, 1, 1], 5.0), "NaN cell should be filled from valid neighbours."
+    assert np.allclose(values[:, 0, 0], 0.0), "Negative values should still be clipped to 0."
+    result.close()
