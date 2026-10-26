@@ -260,7 +260,7 @@ def preprocess_agera5(src, variable, yearlist, basepath, to_match):
         src = src - 273.15  # Convert from Kelvin to Celsius
         src[variable].attrs['units'] = 'degC'
     if variable in ['Precipitation', 'ReferenceET']:
-        src[variable] = src[variable].where(src[variable] >= 0, 0)  # Set negative precipitation and evaporation values to 0.
+        src[variable] = src[variable].clip(min=0)  # Set negative precipitation and evaporation values to 0. NaNs are kept for gap-filling below.
     if variable in ['InitSoilwater']:
         src = src.drop_vars(['expver', 'number'])
         src = src.rename({'valid_time': 'time'})
