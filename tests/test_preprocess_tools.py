@@ -761,3 +761,47 @@ def test_download_url_failure_leaves_no_file(tmp_path, monkeypatch):
     with pytest.raises(ConnectionError):
         download_url("https://example.org/x.zip", download_path=str(target))
     assert not target.exists()
+
+
+# ---------------------------------------------------------------------------
+# SPAM 2020 V2r2: nodata stored as -3.4e38 instead of NaN in most layers
+# ---------------------------------------------------------------------------
+
+def test_preprocess_spam_masks_declared_nodata(test_polygon_path, test_polygon_gdf, tmp_path):
+    """Cells flagged with a declared nodata value must not leak into the area sums."""
+    import rasterio
+    from rasterio.transform import from_bounds
+    from geoaquacrop_preprocess.preprocess_tools import preprocess_spam, basegrid
+
+    to_match, _ = basegrid(test_polygon_path, resolution=0.05,
+                           templategrid_path=str(tmp_path / "template.nc"))
+    xmin, ymin, xmax, ymax = test_polygon_gdf.total_bounds
+    H, W = 10, 10
+    transform = from_bounds(xmin - 0.5, ymin - 0.5, xmax + 0.5, ymax + 0.5, W, H)
+    nodata = np.float32(-3.4028234663852886e38)
+
+    spam_dir = tmp_path / "spam_data"
+    spam_dir.mkdir()
+    data = np.full((H, W), 50.0, dtype=np.float32)
+    data[:, : W // 2] = nodata                      # half the source grid has no data
+    with rasterio.open(str(spam_dir / "spam2020_V2r2_global_A_RICE_R.tif"), "w", driver="GTiff",
+                       height=H, width=W, count=1, dtype="float32", crs="EPSG:4326",
+                       transform=transform, nodata=nodata) as dst:
+        dst.write(data, 1)
+
+    preprocess_spam(str(tmp_path), str(spam_dir), "2020", "physical_area",
+                    test_polygon_path, to_match, source="spam2020V2r2_physical_area")
+
+    result = xr.open_dataset(str(tmp_path / "processed" / "spam2020_physical_area.nc"))
+    area = result["PaddyRice_rf_physical_area"]
+    assert float(area.min()) >= 0.0
+    assert float(area.max()) > 0.0
+    assert result.attrs["source"] == "spam2020V2r2_physical_area"
+    result.close()
+
+
+def test_spam_sources_use_latest_2020_release():
+    from geoaquacrop_preprocess.crop_areas import SPAM_SOURCES, spam_download_name
+    release, url = SPAM_SOURCES[("2020", "physical_area")]
+    assert release == "V2r2" and "V2r2" in url and url.endswith("dl=1")
+    assert spam_download_name("2020", "physical_area") == "spam2020V2r2_physical_area"

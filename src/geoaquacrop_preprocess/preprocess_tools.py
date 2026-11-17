@@ -138,7 +138,7 @@ def unzip_all(dir='.'):
                 os.remove(file)
 
 ## Preprocessing functions
-def preprocess_spam(basepath, download_dir, refyear, spam_variable, domain_path, to_match, mask=None):
+def preprocess_spam(basepath, download_dir, refyear, spam_variable, domain_path, to_match, mask=None, source=None):
     """Reproject, clip, and merge SPAM GeoTIFF layers into a domain NetCDF.
 
     Iterates over all per-crop GeoTIFF files in ``download_dir``, reprojects each
@@ -156,6 +156,8 @@ def preprocess_spam(basepath, download_dir, refyear, spam_variable, domain_path,
         to_match (xarray.Dataset): Template raster that defines the output grid.
         mask (geopandas.GeoDataFrame, optional): Pre-loaded domain GeoDataFrame.
             If ``None``, it is read from ``domain_path``.
+        source (str, optional): SPAM release the layers come from (e.g.
+            ``'spam2020V2r2_physical_area'``), stored as a file attribute.
     """
     if mask is None:
         mask = gpd.read_file(domain_path)
@@ -224,6 +226,8 @@ def preprocess_spam(basepath, download_dir, refyear, spam_variable, domain_path,
     # Merge data into one file
     src_mosaic = xr.merge(file_to_mosaic)
     src_mosaic = src_mosaic.rio.write_crs(4326)      # adds spatial_ref coordinate with crs_wkt
+    if source:
+        src_mosaic.attrs['source'] = source
     #for var in src_mosaic.data_vars:               # ensure every data variable references the CRS
     #    src_mosaic[var].attrs['grid_mapping'] = 'spatial_ref'
     target_dir = makedirs(basepath, 'processed', '')

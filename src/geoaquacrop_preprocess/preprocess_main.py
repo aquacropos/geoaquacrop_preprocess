@@ -9,7 +9,7 @@ Required inputs:
 - Path to a vector polygon file (GeoJSON or shapefile) representing the model
   domain (EPSG:4326).
 - Time period to model: ``start_year`` and ``end_year``.
-- Desired cell resolution in decimal degrees (default 0.05° ≈ 3 arcmin). Higher resolution may be possible for smaller domains, but keep in mind that the spatial resolution of most input datasets is quite coarse (e.g. 0.25 degrees for future climate data), so higher resolution may not always be useful and may lead to longer processing times and larger file sizes.
+- Desired cell resolution in decimal degrees (default 0.1° ≈ 6 arcmin, the native resolution of AgERA5). Higher resolution may be possible for smaller domains, but keep in mind that the spatial resolution of most input datasets is quite coarse (e.g. 0.25 degrees for future climate data), so higher resolution may not always be useful and may lead to longer processing times and larger file sizes.
 - Copernicus CDS API token (only required for AgERA5 past climate data).
 
 Generated output datasets:
@@ -43,7 +43,7 @@ domain_path = '/Users/ritterj1/PythonProjects/geoaquacrop_preprocess/tests/test_
 #domain_path = os.path.join(os.getcwd(), 'inputdata', 'mekong', 'basin_outline', 'mekong_jrc_outline.geojson')
 start_year = 2030
 end_year = 2031
-cell_resolution = 0.05 # cell resolution in degrees (e.g. 0.05 for 3 arcmin). Resolution of 0.05 degrees is reasonable given the coarse spatial resolution of most input datasets.
+cell_resolution = 0.1 # cell resolution in degrees (0.1 ≈ 6 arcmin, the native resolution of AgERA5). Finer grids add little given the coarse resolution of the climate inputs.
 api_token = 'xxx'  # your API token when using AgERA5 as climate input, retrieved from your profile page on the Copernicus Climate Data Store (https://cds.climate.copernicus.eu/)
 
 # NASA NEX-GDDP-CMIP6 settings (used for climate projection inputs when end_year >= current year)
@@ -52,7 +52,7 @@ nasanex_scenario = 'ssp245'     # SSP scenario for years >= 2015: 'ssp126', 'ssp
 nasanex_ensemble = 'r1i1p1f1'   # ensemble member (check catalog for model-specific members)
 
 ##
-def run(domain_shape_path, start_year, end_year, api_token=None, cell_resolution=0.05, preprocess=['soil', 'crop_areas', 'crop_calendar', 'climate'],
+def run(domain_shape_path, start_year, end_year, api_token=None, cell_resolution=0.1, preprocess=['soil', 'crop_areas', 'crop_calendar', 'climate'],
         nasanex_model='GFDL-CM4', nasanex_scenario='ssp245', nasanex_ensemble='r1i1p1f1', workingdirectory=None,
         climate_source='auto'):
     """Run the full GeoAquaCrop preprocessing pipeline.
@@ -75,9 +75,10 @@ def run(domain_shape_path, start_year, end_year, api_token=None, cell_resolution
             ``'climate'`` is in ``preprocess`` and the period falls within AgERA5
             availability (1979 to last complete year).
         cell_resolution (float): Output grid resolution in decimal degrees.
-            Default is ``0.05`` (≈ 3 arcmin). Note that most input datasets have
-            a coarser native resolution (e.g. 0.25° for NASA NEX climate data),
-            so increasing this beyond the native resolution has limited benefit.
+            Default is ``0.1`` (≈ 6 arcmin), the native resolution of AgERA5.
+            Most input datasets have this or a coarser native resolution
+            (e.g. 0.25° for NASA NEX climate data), so finer grids add little
+            beyond resolving soil and crop-area patterns.
         preprocess (list[str]): Preprocessing steps to execute. Any subset of
             ``['soil', 'crop_areas', 'crop_calendar', 'climate']``.
         nasanex_model (str): CMIP6 model name used when downloading NASA
@@ -145,7 +146,7 @@ def run(domain_shape_path, start_year, end_year, api_token=None, cell_resolution
 geoaquacrop_preprocess = run
 
 
-def weather(domain_shape_path, start_year, end_year, api_token=None, cell_resolution=0.05,
+def weather(domain_shape_path, start_year, end_year, api_token=None, cell_resolution=0.1,
             nasanex_model='GFDL-CM4', nasanex_scenario='ssp245', nasanex_ensemble='r1i1p1f1',
             workingdirectory=None, climate_source='auto'):
     """Download and preprocess climate data only. See `run` for argument details."""
@@ -155,19 +156,19 @@ def weather(domain_shape_path, start_year, end_year, api_token=None, cell_resolu
                climate_source=climate_source)
 
 
-def soil(domain_shape_path, start_year, end_year, cell_resolution=0.05, workingdirectory=None):
+def soil(domain_shape_path, start_year, end_year, cell_resolution=0.1, workingdirectory=None):
     """Download and preprocess soil data only. See `run` for argument details."""
     return run(domain_shape_path, start_year, end_year, cell_resolution=cell_resolution,
                preprocess=['soil'], workingdirectory=workingdirectory)
 
 
-def crop_calendar(domain_shape_path, start_year, end_year, cell_resolution=0.05, workingdirectory=None):
+def crop_calendar(domain_shape_path, start_year, end_year, cell_resolution=0.1, workingdirectory=None):
     """Download and preprocess crop calendar data only. See `run` for argument details."""
     return run(domain_shape_path, start_year, end_year, cell_resolution=cell_resolution,
                preprocess=['crop_calendar'], workingdirectory=workingdirectory)
 
 
-def crop_area(domain_shape_path, start_year, end_year, cell_resolution=0.05, workingdirectory=None):
+def crop_area(domain_shape_path, start_year, end_year, cell_resolution=0.1, workingdirectory=None):
     """Download and preprocess crop area data only. See `run` for argument details."""
     return run(domain_shape_path, start_year, end_year, cell_resolution=cell_resolution,
                preprocess=['crop_areas'], workingdirectory=workingdirectory)

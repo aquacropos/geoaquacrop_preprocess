@@ -87,7 +87,7 @@ def cropcalendar(domain_path, basepath, referenceraster_path, mask=None, to_matc
         download_ggcmi_files(record_url, unzipped_download_directory)
 
 
-    ## Convert separate files to rasterstack, reproject (nearest neighbour) to 0.05 degrees, and clip to domain
+    ## Convert separate files to rasterstack, reproject (nearest neighbour) to the template grid, and clip to domain
 
     # Dictionary that connects GGCMI crop ID's to crop names in AquaCrop. Used for layer naming
     crop_dict = {'bar': 'Barley', 'cot': 'Cotton', 'bea': 'DryBean', 'mai': 'Maize', 'ri1': 'PaddyRice1', 'ri2': 'PaddyRice2', 'pot': 'Potato', 'sor': 'Sorghum', 'soy': 'Soybean', 'sgb': 'SugarBeet', 'sgc': 'SugarCane', 'sun': 'Sunflower', 'swh': 'Wheat_summer', 'wwh': 'Wheat_winter', 'cas': 'Cassava'}
