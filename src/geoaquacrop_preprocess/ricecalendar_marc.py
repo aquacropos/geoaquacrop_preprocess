@@ -1,4 +1,18 @@
-def ricecalendar_marc(domain_path, basepath, referenceraster_path):
+# MARC provides two calendars (Zhao et al. 2024, ESSD 16, 3893):
+# - 'group': rice seasons grouped by transplanting window, so each layer is
+#   the same season everywhere. Group 1 = DOY 182-304 (Jul-Oct, main/wet
+#   season), group 2 = DOY 60-181 (Mar-Jun), group 3 = DOY 305-59 (Nov-Feb,
+#   dry season). A group is empty where that season grows no rice.
+# - 'cropping': the first, second and third rice crop of each cell in
+#   calendar order, so a layer is the wet season in one place and a
+#   Feb-Apr crop in another.
+MARC_CALENDARS = {
+    'group': ('1_Transplanting_Harvest_Group.nc', 'Transplanting_{k}_Group', 'Harvest_{k}_Group'),
+    'cropping': ('3_Transplanting_Harvest_Cropping.nc', 'Transplanting_{k}_Cropping', 'Harvest_{k}_Cropping'),
+}
+
+
+def ricecalendar_marc(domain_path, basepath, referenceraster_path, calendar_type='group'):
     """Download and preprocess the MARC rice calendar dataset.
 
     Downloads the Monsoon Asia Rice Calendar (MARC, https://essd.copernicus.org/articles/16/3893/2024/), reprojects to
@@ -8,6 +22,13 @@ def ricecalendar_marc(domain_path, basepath, referenceraster_path):
     irrigated). Note that MARC does not distinguish rainfed from irrigated — the
     ``rf`` and ``ir`` layers are identical.
 
+    With ``calendar_type='group'`` (default), PaddyRice1/2/3 are MARC's
+    seasonal groups: transplanting in Jul-Oct (main/wet season), Mar-Jun and
+    Nov-Feb (dry season), the same season in every cell. With
+    ``'cropping'``, they are the first, second and third crop of each cell in
+    calendar order. MARC's native grid is 0.5°; cells without a season are
+    filled from neighbouring cells (see below).
+
     Args:
         domain_path (str): Path to the domain polygon file (GeoJSON or shapefile,
             EPSG:4326).
@@ -16,6 +37,7 @@ def ricecalendar_marc(domain_path, basepath, referenceraster_path):
             is written to ``<basepath>/processed/ricecalendar_marc.nc``.
         referenceraster_path (str): Path to the template raster NetCDF used to
             align the output grid.
+        calendar_type (str): ``'group'`` (default) or ``'cropping'``; see above.
     """
 
     import os
@@ -25,6 +47,10 @@ def ricecalendar_marc(domain_path, basepath, referenceraster_path):
     import xarray as xr
     import rioxarray  # noqa: F401  – registers .rio accessor on xarray objects
     from .preprocess_tools import download_url, unzip_all, ensure_xy_dims, makedirs, safe_clip
+
+    if calendar_type not in MARC_CALENDARS:
+        raise ValueError(f"calendar_type must be one of {list(MARC_CALENDARS)}, not {calendar_type!r}")
+    marc_name, transplant_pattern, harvest_pattern = MARC_CALENDARS[calendar_type]
 
     # ------------------------------------------------------------------ #
     # Load reference raster and domain polygon
@@ -47,7 +73,7 @@ def ricecalendar_marc(domain_path, basepath, referenceraster_path):
     download_path = os.path.join(target_dir, 'Rice_Calendar_Data_ver.1.0.zip')
 
     # Check for any already-unzipped content (NetCDF files present)
-    existing_nc = glob.glob(os.path.join(target_dir, '**', '3_Transplanting_Harvest_Cropping.nc'), recursive=True)
+    existing_nc = glob.glob(os.path.join(target_dir, '**', marc_name), recursive=True)
 
     if existing_nc:
         nc_file = existing_nc[0]
@@ -63,10 +89,10 @@ def ricecalendar_marc(domain_path, basepath, referenceraster_path):
         print("Unzipping MARC rice calendar data...")
         unzip_all(dir=target_dir)
 
-        existing_nc = glob.glob(os.path.join(target_dir, '**', '3_Transplanting_Harvest_Cropping.nc'), recursive=True)
+        existing_nc = glob.glob(os.path.join(target_dir, '**', marc_name), recursive=True)
         if not existing_nc:
             raise FileNotFoundError(
-                "Could not find '3_Transplanting_Harvest_Cropping.nc' after unzipping. "
+                f"Could not find '{marc_name}' after unzipping. "
                 f"Check contents of: {target_dir}"
             )
         nc_file = existing_nc[0]
@@ -166,14 +192,11 @@ def ricecalendar_marc(domain_path, basepath, referenceraster_path):
 
     # ------------------------------------------------------------------ #
     # Define crop cycles
-    # Cycle 1 → PaddyRice1, cycle 2 → PaddyRice2, cycle 3 → PaddyRice3
-    # Variable name 'Transplating' preserves the original (misspelled) name
-    # in the MARC NetCDF file.
+    # Group (or cropping) 1 → PaddyRice1, 2 → PaddyRice2, 3 → PaddyRice3
     # ------------------------------------------------------------------ #
     crop_cycles = [
-        ('PaddyRice1', 'Transplanting_1_Cropping', 'Harvest_1_Cropping'),
-        ('PaddyRice2', 'Transplanting_2_Cropping', 'Harvest_2_Cropping'),
-        ('PaddyRice3', 'Transplanting_3_Cropping', 'Harvest_3_Cropping'),
+        (f'PaddyRice{k}', transplant_pattern.format(k=k), harvest_pattern.format(k=k))
+        for k in (1, 2, 3)
     ]
 
     file_to_mosaic = []
@@ -249,6 +272,13 @@ def ricecalendar_marc(domain_path, basepath, referenceraster_path):
     # ------------------------------------------------------------------ #
     src_mosaic = xr.merge(file_to_mosaic)
     src_mosaic = src_mosaic.rio.write_crs(4326)   # adds spatial_ref coordinate
+    src_mosaic.attrs.update({
+        'source': f'MARC v1.0 rice calendar, {marc_name}',
+        'calendar_type': calendar_type,
+        'seasons': ('PaddyRice1: transplanting DOY 182-304 (main/wet season); PaddyRice2: DOY 60-181; '
+                    'PaddyRice3: DOY 305-59 (dry season)') if calendar_type == 'group' else
+                   'PaddyRice1/2/3: first, second and third rice crop of each cell in calendar order',
+    })
 
     target_out_dir = makedirs(basepath, 'processed', 'cropcalendar_marc')
     targetfile = os.path.join(target_out_dir, 'cropcalendar.nc')

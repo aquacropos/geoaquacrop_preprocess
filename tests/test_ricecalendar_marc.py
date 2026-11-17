@@ -97,7 +97,7 @@ def test_ricecalendar_marc_creates_output(marc_setup):
     marc_file = marc_dir / "3_Transplanting_Harvest_Cropping.nc"
     _make_marc_ds(lats, lons).to_netcdf(str(marc_file))
 
-    ricecalendar_marc(domain_path, basepath, template_path)
+    ricecalendar_marc(domain_path, basepath, template_path, calendar_type="cropping")
 
     outfile = (
         __import__("pathlib").Path(basepath)
@@ -115,7 +115,7 @@ def test_ricecalendar_marc_output_variables(marc_setup):
     marc_file = marc_dir / "3_Transplanting_Harvest_Cropping.nc"
     _make_marc_ds(lats, lons).to_netcdf(str(marc_file))
 
-    ricecalendar_marc(domain_path, basepath, template_path)
+    ricecalendar_marc(domain_path, basepath, template_path, calendar_type="cropping")
 
     import pathlib
     outfile = pathlib.Path(basepath) / "processed" / "cropcalendar_marc" / "cropcalendar.nc"
@@ -142,7 +142,7 @@ def test_ricecalendar_marc_planting_day_range(marc_setup):
     marc_file = marc_dir / "3_Transplanting_Harvest_Cropping.nc"
     _make_marc_ds(lats, lons).to_netcdf(str(marc_file))
 
-    ricecalendar_marc(domain_path, basepath, template_path)
+    ricecalendar_marc(domain_path, basepath, template_path, calendar_type="cropping")
 
     import pathlib
     outfile = pathlib.Path(basepath) / "processed" / "cropcalendar_marc" / "cropcalendar.nc"
@@ -170,7 +170,7 @@ def test_ricecalendar_marc_growing_season_length_positive(marc_setup):
     marc_file = marc_dir / "3_Transplanting_Harvest_Cropping.nc"
     _make_marc_ds(lats, lons).to_netcdf(str(marc_file))
 
-    ricecalendar_marc(domain_path, basepath, template_path)
+    ricecalendar_marc(domain_path, basepath, template_path, calendar_type="cropping")
 
     import pathlib
     outfile = pathlib.Path(basepath) / "processed" / "cropcalendar_marc" / "cropcalendar.nc"
@@ -203,7 +203,7 @@ def test_ricecalendar_marc_year_boundary_season_length(marc_setup):
     # Season 3: planting=300, harvest=60  →  length = 60 - 300 + 365 = 125
     _make_marc_ds(lats, lons).to_netcdf(str(marc_file))
 
-    ricecalendar_marc(domain_path, basepath, template_path)
+    ricecalendar_marc(domain_path, basepath, template_path, calendar_type="cropping")
 
     import pathlib
     outfile = pathlib.Path(basepath) / "processed" / "cropcalendar_marc" / "cropcalendar.nc"
@@ -236,7 +236,7 @@ def test_ricecalendar_marc_fills_nan_gaps(marc_setup):
     marc_file = marc_dir / "3_Transplanting_Harvest_Cropping.nc"
     _make_marc_ds_with_nans(lats, lons).to_netcdf(str(marc_file))
 
-    ricecalendar_marc(domain_path, basepath, template_path)
+    ricecalendar_marc(domain_path, basepath, template_path, calendar_type="cropping")
 
     import pathlib
     outfile = pathlib.Path(basepath) / "processed" / "cropcalendar_marc" / "cropcalendar.nc"
@@ -268,7 +268,7 @@ def test_ricecalendar_marc_replaces_doy_60(marc_setup):
         str(marc_file)
     )
 
-    ricecalendar_marc(domain_path, basepath, template_path)
+    ricecalendar_marc(domain_path, basepath, template_path, calendar_type="cropping")
 
     import pathlib
     outfile = pathlib.Path(basepath) / "processed" / "cropcalendar_marc" / "cropcalendar.nc"
@@ -311,7 +311,65 @@ def test_ricecalendar_marc_outside_extent_warning(test_polygon_path, test_polygo
     marc_file = marc_dir / "3_Transplanting_Harvest_Cropping.nc"
     _make_marc_ds(lats, lons).to_netcdf(str(marc_file))
 
-    ricecalendar_marc(test_polygon_path, str(tmp_path), template_path)
+    ricecalendar_marc(test_polygon_path, str(tmp_path), template_path, calendar_type="cropping")
 
     out = capsys.readouterr().out
     assert "WARNING" in out or "fully inside" in out.lower()
+
+
+
+# ---------------------------------------------------------------------------
+# Group-based calendar (default): one season per layer everywhere
+# ---------------------------------------------------------------------------
+
+def _make_marc_group_ds(lats, lons):
+    """Group calendar: wet (group 1) everywhere, dry (group 3) only in the north half."""
+    shape = (len(lats), len(lons))
+    north = np.broadcast_to((lats >= np.median(lats))[:, None], shape)
+
+    def _da(values):
+        return xr.DataArray(np.asarray(values, dtype="float32"), dims=["lat", "lon"],
+                            coords={"lat": lats, "lon": lons})
+    return xr.Dataset({
+        "Transplanting_1_Group": _da(np.full(shape, 200.0)),
+        "Harvest_1_Group":       _da(np.full(shape, 305.0)),
+        "Transplanting_2_Group": _da(np.full(shape, 100.0)),
+        "Harvest_2_Group":       _da(np.full(shape, 200.0)),
+        "Transplanting_3_Group": _da(np.where(north, 340.0, np.nan)),
+        "Harvest_3_Group":       _da(np.where(north, 80.0, np.nan)),
+    })
+
+
+def _run_group(marc_setup, **kwargs):
+    from geoaquacrop_preprocess.ricecalendar_marc import ricecalendar_marc
+    domain_path, basepath, template_path, marc_dir, lats, lons = marc_setup
+    _make_marc_group_ds(lats, lons).to_netcdf(str(marc_dir / "1_Transplanting_Harvest_Group.nc"))
+    ricecalendar_marc(domain_path, basepath, template_path, **kwargs)
+    out = __import__("pathlib").Path(basepath) / "processed" / "cropcalendar_marc" / "cropcalendar.nc"
+    return xr.open_dataset(str(out))
+
+
+def test_group_calendar_is_default(marc_setup):
+    ds = _run_group(marc_setup)
+    assert ds.attrs["calendar_type"] == "group"
+    assert float(ds["PaddyRice1_rf_planting"].mean()) == pytest.approx(200.0)
+    assert float(ds["PaddyRice2_rf_planting"].mean()) == pytest.approx(100.0)
+    ds.close()
+
+
+def test_group_calendar_season_lengths_and_dry_season(marc_setup):
+    ds = _run_group(marc_setup, calendar_type="group")
+    assert float(ds["PaddyRice1_rf_growing_season_length"].mean()) == pytest.approx(105.0)
+    # dry season crosses the year end: 340 -> 80 is 105 days
+    gsl3 = ds["PaddyRice3_rf_growing_season_length"]
+    assert float(gsl3.min()) == pytest.approx(105.0) and float(gsl3.max()) == pytest.approx(105.0)
+    # cells without a dry-season crop are filled from neighbours
+    assert int(ds["PaddyRice3_rf_planting"].notnull().sum()) == int(ds["PaddyRice1_rf_planting"].notnull().sum())
+    ds.close()
+
+
+def test_unknown_calendar_type_raises(marc_setup):
+    from geoaquacrop_preprocess.ricecalendar_marc import ricecalendar_marc
+    domain_path, basepath, template_path, *_ = marc_setup
+    with pytest.raises(ValueError, match="calendar_type"):
+        ricecalendar_marc(domain_path, basepath, template_path, calendar_type="season")
