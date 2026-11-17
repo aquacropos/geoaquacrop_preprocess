@@ -238,3 +238,120 @@ def test_preprocess_and_save_cf_attributes(test_polygon_path, tmp_path):
     assert result.attrs.get("cmip6_model") == "GFDL-CM4"
     assert result.attrs.get("cmip6_scenario") == "ssp245"
     result.close()
+
+
+# ---------------------------------------------------------------------------
+# Whole-year requests (non-standard calendars)
+# ---------------------------------------------------------------------------
+
+def test_build_ncss_url_requests_whole_file():
+    """No explicit end date: '31 December' is rejected for 360-day models."""
+    url = _build_ncss_url(
+        "UKESM1-0-LL", "historical", "r1i1p1f2", "pr", 2000,
+        north=50.0, west=5.0, south=45.0, east=15.0,
+    )
+    assert "temporal=all" in url
+    assert "time_end" not in url and "time_start" not in url
+
+
+# ---------------------------------------------------------------------------
+# _to_standard_calendar
+# ---------------------------------------------------------------------------
+
+from geoaquacrop_preprocess.climate_nasanex import _to_standard_calendar
+
+
+def _cf_year(calendar, year, nex_var, values, lats=(15.0, 10.0), lons=(100.0, 105.0)):
+    """One year of daily data at noon on a cftime calendar; values per day (1-D)."""
+    times = xr.date_range(f"{year}-01-01T12:00", periods=len(values), freq="D",
+                          calendar=calendar, use_cftime=True)
+    data = np.broadcast_to(np.asarray(values, dtype=np.float32)[:, None, None],
+                           (len(values), len(lats), len(lons))).copy()
+    data[:, 0, 0] = np.nan                                  # a cell with no data (e.g. ocean)
+    return xr.Dataset({nex_var: (("time", "y", "x"), data)},
+                      coords={"time": times, "y": list(lats), "x": list(lons)})
+
+
+def test_noleap_gains_feb29_with_zero_rain():
+    ds = _cf_year("noleap", 2000, "pr", np.ones(365))
+    out, cal = _to_standard_calendar(ds, "pr")
+    assert cal == "noleap"
+    assert out.time.size == 366
+    feb29 = out["pr"].sel(time="2000-02-29")
+    assert float(feb29.isel(y=1, x=1)) == 0.0               # inserted day: no rain
+    assert np.isnan(float(feb29.isel(y=0, x=0)))            # missing cell stays missing
+    assert float(out["pr"].isel(y=1, x=1).sum()) == 365.0   # annual total unchanged
+
+
+def test_noleap_temperature_interpolated():
+    values = np.arange(365, dtype=float)                    # 28 Feb = 58, 1 Mar = 59
+    ds = _cf_year("noleap", 2000, "tasmax", values)
+    out, _ = _to_standard_calendar(ds, "tasmax")
+    assert float(out["tasmax"].sel(time="2000-02-29").isel(y=1, x=1)) == pytest.approx(58.5)
+
+
+@pytest.mark.parametrize("year,days", [(2000, 366), (2001, 365)])
+def test_360_day_mapped_to_real_days(year, days):
+    ds = _cf_year("360_day", year, "pr", np.full(360, 2.0))
+    out, cal = _to_standard_calendar(ds, "pr")
+    assert cal == "360_day"
+    assert out.time.size == days
+    assert pd.DatetimeIndex(out.time.values).equals(
+        pd.date_range(f"{year}-01-01", f"{year}-12-31", freq="D"))
+    assert float(out["pr"].isel(y=1, x=1).sum()) == pytest.approx(720.0)   # 360 × 2 mm kept
+
+
+def test_360_day_temperature_has_no_gaps():
+    ds = _cf_year("360_day", 2001, "tasmin", np.full(360, 20.0))
+    out, _ = _to_standard_calendar(ds, "tasmin")
+    assert not bool(out["tasmin"].isel(y=1, x=1).isnull().any())
+    assert float(out["tasmin"].isel(y=1, x=1).mean()) == pytest.approx(20.0)
+
+
+def test_standard_calendar_unchanged_but_normalised_to_midnight():
+    ds = _cf_year("proleptic_gregorian", 2000, "pr", np.arange(366, dtype=float))
+    out, cal = _to_standard_calendar(ds, "pr")
+    assert cal == "proleptic_gregorian"
+    assert out.time.size == 366
+    assert np.issubdtype(out.time.dtype, np.datetime64)
+    assert (pd.DatetimeIndex(out.time.values) == pd.DatetimeIndex(out.time.values).normalize()).all()
+    np.testing.assert_array_equal(out["pr"].isel(y=1, x=1).values, np.arange(366))
+
+
+# ---------------------------------------------------------------------------
+# _download_year: interrupted downloads leave nothing behind
+# ---------------------------------------------------------------------------
+
+def test_download_year_interrupted_leaves_no_file(tmp_path, monkeypatch):
+    from geoaquacrop_preprocess import climate_nasanex
+
+    class DroppedResponse:
+        def raise_for_status(self):
+            pass
+
+        def iter_content(self, chunk_size):
+            yield b"partial"
+            raise ConnectionError("connection dropped")
+
+    monkeypatch.setattr(climate_nasanex, "_discover_file_pattern", lambda *a: ("gn", "_v2.0"))
+    monkeypatch.setattr(climate_nasanex.requests, "get", lambda *a, **k: DroppedResponse())
+    monkeypatch.setattr(climate_nasanex.time, "sleep", lambda s: None)
+
+    with pytest.raises(RuntimeError):
+        climate_nasanex._download_year("ACCESS-CM2", "ssp245", "r1i1p1f1", "pr", 2000,
+                                       1, 0, 0, 1, str(tmp_path), max_retries=2)
+    assert list(tmp_path.iterdir()) == []
+
+
+# ---------------------------------------------------------------------------
+# Scenario label written to the output files
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("start,end,expected", [
+    (1985, 2014, "historical"),
+    (2031, 2060, "ssp585"),
+    (2010, 2020, "historical+ssp585"),
+])
+def test_scenario_label(start, end, expected):
+    from geoaquacrop_preprocess.climate_nasanex import _scenario_label
+    assert _scenario_label(list(range(start, end + 1)), "ssp585") == expected

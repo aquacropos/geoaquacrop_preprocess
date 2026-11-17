@@ -15,10 +15,12 @@ Required inputs:
 Generated output datasets:
 
 - **Climate** — daily precipitation, reference ET, minimum and maximum
-  temperature. Source is selected automatically:
+  temperature. Source is selected automatically unless ``climate_source`` is set:
 
   - Both years in the past (< current year): AgERA5 reanalysis via Copernicus CDS.
   - ``end_year`` in the future (≥ current year): NASA NEX-GDDP-CMIP6 projections.
+  - ``climate_source='nasanex'`` uses NEX-GDDP-CMIP6 for any period, e.g. the
+    CMIP6 ``historical`` experiment (1950–2014) as a baseline for projections.
 
 - **Soil** — clay, sand, silt, and soil organic matter for six depth layers
   (ISRIC SoilGrids).
@@ -30,7 +32,7 @@ Generated output datasets:
 import os
 import geopandas as gpd
 from .preprocess_tools import basegrid
-from .validate_inputs import validate_inputs
+from .validate_inputs import validate_inputs, select_climate_source
 # import pdb
 
 ## INPUT ARGUMENTS. REPLACE THESE WITH YOUR OWN VALUES
@@ -51,14 +53,16 @@ nasanex_ensemble = 'r1i1p1f1'   # ensemble member (check catalog for model-speci
 
 ##
 def run(domain_shape_path, start_year, end_year, api_token=None, cell_resolution=0.05, preprocess=['soil', 'crop_areas', 'crop_calendar', 'climate'],
-        nasanex_model='GFDL-CM4', nasanex_scenario='ssp245', nasanex_ensemble='r1i1p1f1', workingdirectory=None):
+        nasanex_model='GFDL-CM4', nasanex_scenario='ssp245', nasanex_ensemble='r1i1p1f1', workingdirectory=None,
+        climate_source='auto'):
     """Run the full GeoAquaCrop preprocessing pipeline.
 
     Downloads and preprocesses all input datasets required to run FAO AquaCrop
     over large regions in gridded format for the specified domain and time period.
-    The climate source is selected automatically: AgERA5 reanalysis is used when
-    both years fall within its availability window (1979 to the previous complete
-    year), otherwise NASA NEX-GDDP-CMIP6 projections are used.
+    By default the climate source is selected automatically: AgERA5 reanalysis
+    is used when both years fall within its availability window (1979 to the
+    previous complete year), otherwise NASA NEX-GDDP-CMIP6 projections are used.
+    Set ``climate_source`` to choose the source explicitly.
 
     Args:
         domain_shape_path (str): Path to a GeoJSON or shapefile polygon defining
@@ -85,12 +89,17 @@ def run(domain_shape_path, start_year, end_year, api_token=None, cell_resolution
             CMIP6 model. Default ``'r1i1p1f1'``.
         workingdirectory (str, optional): Root directory for all raw and
             processed output. Defaults to the current working directory.
+        climate_source (str): ``'auto'`` (default) selects the source from the
+            period as described above. ``'agera5'`` or ``'nasanex'`` forces a
+            source; with ``'nasanex'``, years up to 2014 come from the CMIP6
+            ``historical`` experiment and later years from ``nasanex_scenario``.
     """
     if workingdirectory is None:
         workingdirectory = os.getcwd()
 
     # Validate user inputs
-    validate_inputs(domain_shape_path, start_year, end_year, api_token, preprocess)
+    validate_inputs(domain_shape_path, start_year, end_year, api_token, preprocess,
+                    climate_source=climate_source)
 
     # Read domain mask GeoDataFrame once; shared by all preprocessing modules to avoid repeated file I/O
     mask = gpd.read_file(domain_shape_path)
@@ -119,15 +128,11 @@ def run(domain_shape_path, start_year, end_year, api_token=None, cell_resolution
         cropcalendar(domain_shape_path, workingdirectory, templategrid_path, mask=mask, to_match=to_match)
 
     # Download and preprocess climate data.
-    # Source selection:
+    # Source selection (climate_source='auto'):
     #   AgERA5 reanalysis  – both years within its availability window (1979 to last complete year)
     #   NASA NEX-GDDP-CMIP6 – any other case (start_year < 1979 or end_year >= current year)
     if 'climate' in preprocess:
-        import datetime
-        current_year = datetime.date.today().year
-        AGERA5_START = 1979
-        use_agera5 = (start_year >= AGERA5_START) and (end_year < current_year)
-        if use_agera5:
+        if select_climate_source(start_year, end_year, climate_source) == 'agera5':
             from .climate_AgERA5 import climate_AgERA5
             climate_AgERA5(workingdirectory, start_year, end_year, api_token, to_match)
         else:
@@ -142,11 +147,12 @@ geoaquacrop_preprocess = run
 
 def weather(domain_shape_path, start_year, end_year, api_token=None, cell_resolution=0.05,
             nasanex_model='GFDL-CM4', nasanex_scenario='ssp245', nasanex_ensemble='r1i1p1f1',
-            workingdirectory=None):
+            workingdirectory=None, climate_source='auto'):
     """Download and preprocess climate data only. See `run` for argument details."""
     return run(domain_shape_path, start_year, end_year, api_token, cell_resolution=cell_resolution,
                preprocess=['climate'], nasanex_model=nasanex_model, nasanex_scenario=nasanex_scenario,
-               nasanex_ensemble=nasanex_ensemble, workingdirectory=workingdirectory)
+               nasanex_ensemble=nasanex_ensemble, workingdirectory=workingdirectory,
+               climate_source=climate_source)
 
 
 def soil(domain_shape_path, start_year, end_year, cell_resolution=0.05, workingdirectory=None):

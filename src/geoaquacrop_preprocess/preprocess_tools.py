@@ -10,6 +10,7 @@ import os
 import glob
 import time
 import requests
+from contextlib import contextmanager
 from zipfile import ZipFile
 #import pdb # pdb.set_trace()
 
@@ -18,6 +19,30 @@ import scipy.ndimage as ndi
 from shapely.geometry import mapping, box
 
 ## Download functions
+
+@contextmanager
+def atomic_write(path):
+    """Write a file under a temporary name and move it into place only on success.
+
+    Yields ``<path>.part`` to write to. If the block completes, the temporary
+    file replaces ``path`` in one step; if it raises (or the process is killed),
+    ``path`` is never created. Download and merge steps that skip existing files
+    therefore never mistake a truncated file for a complete one.
+
+    Args:
+        path (str): Final file path.
+
+    Yields:
+        str: Temporary path to write to.
+    """
+    tmp_path = str(path) + '.part'
+    try:
+        yield tmp_path
+        os.replace(tmp_path, path)
+    finally:
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
+
 
 def get_with_retries(url, max_retries=5, timeout=30, backoff=2):
     """Send a GET request, retrying on network errors and server-side failures.
@@ -83,7 +108,7 @@ def download_url(url, download_path="./", max_retries=5, timeout=30):
         timeout (float): Per-request timeout in seconds. Defaults to ``30``.
     """
     response = get_with_retries(url, max_retries=max_retries, timeout=timeout)
-    with open(download_path, 'wb') as savefile:
+    with atomic_write(download_path) as tmp_path, open(tmp_path, 'wb') as savefile:
         savefile.write(response.content)  # write download data to disk
 
 def unzip_all(dir='.'):
@@ -328,7 +353,8 @@ def agera5_merge_yearly(target_dir, yearfile):
     for var in combined.data_vars:               # ensure every data variable references the CRS (required by QGIS)
         combined[var].encoding.pop('grid_mapping', None)
         combined[var].attrs['grid_mapping'] = 'spatial_ref'
-    combined.to_netcdf(yearfile)
+    with atomic_write(yearfile) as tmp_path:   # yearfile is the resume checkpoint, so never leave it half-written
+        combined.to_netcdf(tmp_path)
     combined.close()
 
     shutil.rmtree(yearfolder)  # remove unzipped folder to save space

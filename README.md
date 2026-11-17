@@ -50,6 +50,8 @@ The climate data source is selected automatically:
 - **Past climate** (1979 to last complete year) → AgERA5 reanalysis via the Copernicus CDS API
 - **Future climate** (any year ≥ current year, or before 1979) → NASA NEX-GDDP-CMIP6 projections
 
+Pass `climate_source='nasanex'` to use NEX-GDDP-CMIP6 for a past period as well, e.g. the CMIP6 `historical` experiment (1950–2014) as the baseline for projections. NEX-GDDP-CMIP6 models on `noleap` or `360_day` calendars are converted to the standard calendar (inserted days get zero precipitation; other variables are interpolated).
+
 All outputs are written as compressed NetCDF files on a shared spatial grid at the user-specified resolution.
 
 ## Supported crop types

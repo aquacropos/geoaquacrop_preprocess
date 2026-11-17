@@ -717,3 +717,47 @@ def test_preprocess_agera5_gap_fills_nan_instead_of_zeroing(variable, raw_name, 
     assert np.allclose(values[:, 1, 1], 5.0), "NaN cell should be filled from valid neighbours."
     assert np.allclose(values[:, 0, 0], 0.0), "Negative values should still be clipped to 0."
     result.close()
+
+
+# ---------------------------------------------------------------------------
+# atomic_write / download_url
+# ---------------------------------------------------------------------------
+
+from geoaquacrop_preprocess.preprocess_tools import atomic_write, download_url
+
+
+def test_atomic_write_moves_file_into_place(tmp_path):
+    target = tmp_path / "file.nc"
+    with atomic_write(target) as tmp:
+        assert tmp.endswith(".part")
+        with open(tmp, "w") as f:
+            f.write("data")
+        assert not target.exists()          # not visible until the block completes
+    assert target.read_text() == "data"
+    assert not os.path.exists(str(target) + ".part")
+
+
+def test_atomic_write_leaves_nothing_on_failure(tmp_path):
+    target = tmp_path / "file.nc"
+    with pytest.raises(RuntimeError):
+        with atomic_write(target) as tmp:
+            with open(tmp, "w") as f:
+                f.write("half")
+            raise RuntimeError("interrupted")
+    assert not target.exists()
+    assert not os.path.exists(str(target) + ".part")
+
+
+def test_download_url_failure_leaves_no_file(tmp_path, monkeypatch):
+    """A response that fails mid-write must not leave a file that a later run would skip."""
+    class BrokenResponse:
+        @property
+        def content(self):
+            raise ConnectionError("connection dropped")
+
+    monkeypatch.setattr("geoaquacrop_preprocess.preprocess_tools.get_with_retries",
+                        lambda *a, **k: BrokenResponse())
+    target = tmp_path / "download.zip"
+    with pytest.raises(ConnectionError):
+        download_url("https://example.org/x.zip", download_path=str(target))
+    assert not target.exists()

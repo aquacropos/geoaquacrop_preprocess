@@ -27,7 +27,7 @@ import cdsapi
 from shapely.geometry import mapping
 #import pdb # pdb.set_trace()
 
-from .preprocess_tools import agera5_merge_yearly, preprocess_agera5, basegrid, makedirs, unzip_all
+from .preprocess_tools import agera5_merge_yearly, preprocess_agera5, basegrid, makedirs, unzip_all, atomic_write
 
 import socket
 import requests
@@ -234,20 +234,21 @@ def climate_AgERA5(basepath, start_year, end_year, api_token, to_match, variable
             yearfile = os.path.join(target_dir, variable + str(year) + '.nc')
             if not os.path.exists(targetfile) and not os.path.exists(yearfile):  # Skip download if zip file or merged yearly .nc file already exist
                 print("        *** DOWNLOADING CLIMATE DATA FROM AgERA5: " + variable + str(year) + " ***")
-                retrieve_with_dns_fallback(
-                    c,
-                    "sis-agrometeorological-indicators",
-                    {
-                        "variable": [varname_api.get(variable)],
-                        "statistic": [stats_api.get(variable)],
-                        "year": [str(year)],
-                        "month": ["01","02","03","04","05","06","07","08","09","10","11","12"],
-                        "day": ["01","02","03","04","05","06","07","08","09","10","11","12","13","14","15","16","17","18","19","20","21","22","23","24","25","26","27","28","29","30","31"],
-                        "area": bounds,
-                        "version": "2_0",
-                    },
-                    targetfile
-                )
+                with atomic_write(targetfile) as tmp_path:  # an interrupted download leaves no zip behind, so it is retried next run
+                    retrieve_with_dns_fallback(
+                        c,
+                        "sis-agrometeorological-indicators",
+                        {
+                            "variable": [varname_api.get(variable)],
+                            "statistic": [stats_api.get(variable)],
+                            "year": [str(year)],
+                            "month": ["01","02","03","04","05","06","07","08","09","10","11","12"],
+                            "day": ["01","02","03","04","05","06","07","08","09","10","11","12","13","14","15","16","17","18","19","20","21","22","23","24","25","26","27","28","29","30","31"],
+                            "area": bounds,
+                            "version": "2_0",
+                        },
+                        tmp_path
+                    )
 
             # Unzip download file and merge the resulting daily files into one yearly file (AgERA5 api returns a zip file containing daily .nc files)
             if not os.path.exists(yearfile):  # Skip unzipping and file merging if yearly .nc file already exists

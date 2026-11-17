@@ -2,8 +2,48 @@ import os
 import geopandas as gpd
 from datetime import datetime
 
+# AgERA5 is available from 1979 up to (but not including) the current year.
+AGERA5_START = 1979
+CLIMATE_SOURCES = ('auto', 'agera5', 'nasanex')
 
-def validate_inputs(domain_path, start_year, end_year, api_token=None, preprocess=None):
+
+def select_climate_source(start_year, end_year, climate_source='auto'):
+    """Decide which climate dataset to use for a period.
+
+    With ``'auto'``, AgERA5 is used when both years fall within its
+    availability (1979 to the last complete year), otherwise NASA
+    NEX-GDDP-CMIP6. ``'agera5'`` or ``'nasanex'`` forces a source, e.g.
+    ``'nasanex'`` for the CMIP6 ``historical`` experiment over a past period.
+
+    Args:
+        start_year (int): First year of the modelling period.
+        end_year (int): Last year of the modelling period (inclusive).
+        climate_source (str): ``'auto'`` (default), ``'agera5'`` or
+            ``'nasanex'``.
+
+    Returns:
+        str: ``'agera5'`` or ``'nasanex'``.
+
+    Raises:
+        ValueError: If ``climate_source`` is not recognised, or ``'agera5'``
+            is forced for years outside AgERA5 availability.
+    """
+    if climate_source not in CLIMATE_SOURCES:
+        raise ValueError(f"❌ climate_source must be one of {CLIMATE_SOURCES}. Given: {climate_source!r}")
+
+    current_year = datetime.now().year
+    agera5_available = (start_year >= AGERA5_START) and (end_year < current_year)
+
+    if climate_source == 'auto':
+        return 'agera5' if agera5_available else 'nasanex'
+    if climate_source == 'agera5' and not agera5_available:
+        raise ValueError(f"❌ AgERA5 covers {AGERA5_START}–{current_year - 1}; "
+                         f"{start_year}–{end_year} is outside that range.")
+    return climate_source
+
+
+def validate_inputs(domain_path, start_year, end_year, api_token=None, preprocess=None,
+                    climate_source='auto'):
     """Validate user-supplied inputs before running the preprocessing pipeline.
 
     Checks that the domain polygon file exists and contains valid Polygon or
@@ -23,11 +63,14 @@ def validate_inputs(domain_path, start_year, end_year, api_token=None, preproces
         preprocess (list[str], optional): Preprocessing steps that will be run.
             Defaults to ``None``, which is treated as all steps (climate checks
             included).
+        climate_source (str): ``'auto'`` (default), ``'agera5'`` or
+            ``'nasanex'``; see :func:`select_climate_source`.
 
     Raises:
         FileNotFoundError: If ``domain_path`` does not exist on disk.
-        ValueError: If the file geometry type or CRS is invalid, or the year
-            range is outside the supported bounds (1950–2100).
+        ValueError: If the file geometry type or CRS is invalid, the year
+            range is outside the supported bounds (1950–2100), or
+            ``climate_source`` is invalid for the period.
         TypeError: If ``start_year``, ``end_year``, or ``api_token`` has the
             wrong type.
     """
@@ -88,12 +131,9 @@ def validate_inputs(domain_path, start_year, end_year, api_token=None, preproces
         print("✅ All input checks passed successfully.")
         return
 
-    # AgERA5 is available from 1979 up to (but not including) the current year.
-    # Use NASA NEX-GDDP-CMIP6 for any period outside that window.
-    AGERA5_START = 1979
-    use_agera5 = (start_year >= AGERA5_START) and (end_year < current_year)
+    source = select_climate_source(start_year, end_year, climate_source)
 
-    if use_agera5:
+    if source == 'agera5':
         print(f"ℹ️  Climate data source: AgERA5 reanalysis "
               f"({start_year}–{end_year} falls within AgERA5 availability: "
               f"{AGERA5_START}–{current_year - 1}).")
@@ -104,6 +144,8 @@ def validate_inputs(domain_path, start_year, end_year, api_token=None, preproces
             raise ValueError("❌ API token must be longer than 30 characters. Retrieve it from your profile page on the Copernicus Climate Data Store (https://cds.climate.copernicus.eu/).")
     else:
         print(f"ℹ️  Climate data source: NASA NEX-GDDP-CMIP6")
+        if climate_source == 'nasanex':
+            print("   Reason: requested with climate_source='nasanex'.")
         if start_year < AGERA5_START:
             print(f"   Reason: start_year {start_year} is before AgERA5 availability (from {AGERA5_START}).")
         if end_year >= current_year:
