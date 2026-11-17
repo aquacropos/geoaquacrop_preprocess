@@ -40,7 +40,9 @@ a common output grid:
 
 The climate source is chosen automatically: **AgERA5 reanalysis** is used when
 both years fall within its availability window (1979 to the previous complete
-year); **NASA NEX-GDDP-CMIP6 projections** are used otherwise.
+year); **NASA NEX-GDDP-CMIP6 projections** are used otherwise. Pass
+``climate_source='nasanex'`` to use NEX-GDDP-CMIP6 for a past period too, e.g.
+the CMIP6 ``historical`` experiment as the baseline for projections.
 
 .. toctree::
    :maxdepth: 1

@@ -64,7 +64,7 @@ def _run_with_mocks(test_polygon_path, tmp_path, preprocess, start_year=2030, en
 def test_preprocess_main_calls_validate_inputs(test_polygon_path, tmp_path):
     mocks = _run_with_mocks(test_polygon_path, tmp_path, preprocess=[])
     mocks["validate"].assert_called_once_with(
-        test_polygon_path, 2030, 2031, "dummy", []
+        test_polygon_path, 2030, 2031, "dummy", [], climate_source="auto"
     )
 
 
@@ -216,3 +216,34 @@ def test_single_dataset_wrappers_run_without_api_token(test_polygon_path, tmp_pa
         getattr(pm, wrapper_name)(test_polygon_path, 2020, 2020,
                                   cell_resolution=0.1, workingdirectory=str(tmp_path))
     m_step.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# Climate — explicit climate_source override
+# ---------------------------------------------------------------------------
+
+def test_preprocess_main_climate_source_nasanex_for_past_period(test_polygon_path, tmp_path):
+    """climate_source='nasanex' uses NEX-GDDP-CMIP6 (historical) for a past period."""
+    mocks = _run_with_mocks(
+        test_polygon_path, tmp_path, preprocess=["climate"],
+        start_year=1985, end_year=2014, api_token=None,
+        extra_kwargs=dict(climate_source="nasanex", nasanex_model="GFDL-ESM4"),
+    )
+    mocks["nasanex"].assert_called_once()
+    mocks["agera5"].assert_not_called()
+    assert mocks["nasanex"].call_args.kwargs["model"] == "GFDL-ESM4"
+
+
+def test_preprocess_main_climate_source_passed_to_validation(test_polygon_path, tmp_path):
+    mocks = _run_with_mocks(test_polygon_path, tmp_path, preprocess=[],
+                            extra_kwargs=dict(climate_source="nasanex"))
+    assert mocks["validate"].call_args.kwargs["climate_source"] == "nasanex"
+
+
+def test_weather_forwards_climate_source(test_polygon_path, tmp_path):
+    from geoaquacrop_preprocess import preprocess_main
+    with patch(f"{_MOCK_TARGET}.run") as m_run:
+        preprocess_main.weather(test_polygon_path, 1985, 2014, climate_source="nasanex",
+                                workingdirectory=str(tmp_path))
+    assert m_run.call_args.kwargs["climate_source"] == "nasanex"
+    assert m_run.call_args.kwargs["preprocess"] == ["climate"]

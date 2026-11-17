@@ -7,7 +7,9 @@ Covers input validation logic without any network access.
 import os
 import pytest
 
-from geoaquacrop_preprocess.validate_inputs import validate_inputs
+from datetime import datetime
+
+from geoaquacrop_preprocess.validate_inputs import validate_inputs, select_climate_source
 
 
 # ---------------------------------------------------------------------------
@@ -194,3 +196,42 @@ def test_historical_and_future_spanning_prints_scenario_split(test_polygon_path,
     # Should mention both historical and SSP
     assert "historical" in out.lower() or "ssp" in out.lower()
 
+
+
+# ---------------------------------------------------------------------------
+# Climate source selection
+# ---------------------------------------------------------------------------
+
+_LAST_COMPLETE_YEAR = datetime.now().year - 1
+
+
+@pytest.mark.parametrize("start,end,source,expected", [
+    (2000, 2010, "auto", "agera5"),                    # past, within AgERA5
+    (2030, 2060, "auto", "nasanex"),                   # future
+    (1960, 2000, "auto", "nasanex"),                   # before AgERA5 starts
+    (1985, 2014, "nasanex", "nasanex"),                # forced: CMIP6 historical
+    (2000, _LAST_COMPLETE_YEAR, "agera5", "agera5"),   # forced, within AgERA5
+])
+def test_select_climate_source(start, end, source, expected):
+    assert select_climate_source(start, end, source) == expected
+
+
+def test_select_climate_source_agera5_outside_availability_raises():
+    with pytest.raises(ValueError, match="AgERA5"):
+        select_climate_source(2030, 2060, "agera5")
+
+
+def test_select_climate_source_unknown_raises():
+    with pytest.raises(ValueError, match="climate_source"):
+        select_climate_source(2000, 2010, "cmip6")
+
+
+def test_validate_inputs_nasanex_past_needs_no_token(test_polygon_path):
+    """Forcing NEX for a past period must not demand a CDS token."""
+    validate_inputs(test_polygon_path, start_year=1985, end_year=2014, api_token=None,
+                    climate_source="nasanex")
+
+
+def test_validate_inputs_rejects_unknown_climate_source(test_polygon_path):
+    with pytest.raises(ValueError, match="climate_source"):
+        validate_inputs(test_polygon_path, 2030, 2031, "dummy", climate_source="era5")

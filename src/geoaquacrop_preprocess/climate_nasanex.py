@@ -39,7 +39,7 @@ import scipy.ndimage as ndi
 import xarray as xr
 from rasterio.warp import Resampling
 
-from .preprocess_tools import ensure_xy_dims, makedirs
+from .preprocess_tools import atomic_write, ensure_xy_dims, makedirs
 
 # Cache of (model, scenario, ensemble, variable) -> (grid_label, version_suffix)
 # populated lazily by _discover_file_pattern().
@@ -108,18 +108,28 @@ def _scenario_for_year(year, ssp):
     return 'historical' if year <= 2014 else ssp
 
 
+def _scenario_label(yearlist, ssp):
+    """Experiments used for a list of years, e.g. ``'historical'`` or ``'historical+ssp245'``.
+
+    Written to the output files so they record the data actually used.
+    """
+    return '+'.join(dict.fromkeys(_scenario_for_year(year, ssp) for year in yearlist))
+
+
 def _build_ncss_url(model, scenario, ensemble, variable, year, north, west, south, east,
                     grid='gn', version_suffix=''):
     """Build a THREDDS NCSS spatial-subset download URL."""
     base = "https://ds.nccs.nasa.gov/thredds/ncss/grid/AMES/NEX/GDDP-CMIP6"
     fname = f"{variable}_day_{model}_{scenario}_{ensemble}_{grid}_{year}{version_suffix}.nc"
     path = f"{base}/{model}/{scenario}/{ensemble}/{variable}/{fname}"
+    # Each file holds exactly one year, so request all its time steps rather
+    # than a date range: an explicit 31 December is rejected (HTTP 400) for
+    # models on a 360-day calendar (e.g. UKESM1-0-LL).
     params = (
         f"?var={variable}"
         f"&north={north}&west={west}&east={east}&south={south}"
         "&horizStride=1"
-        f"&time_start={year}-01-01T12:00:00Z"
-        f"&time_end={year}-12-31T12:00:00Z"
+        "&temporal=all"
         "&accept=netcdf4"
     )
     return path + params
@@ -170,7 +180,9 @@ def _download_year(model, ssp, ensemble, variable, year,
         try:
             response = requests.get(url, timeout=180, stream=True)
             response.raise_for_status()
-            with open(local_path, 'wb') as f:
+            # Stream to a temporary name: an interrupted download must not leave a
+            # truncated file that the existence check above would accept next run
+            with atomic_write(local_path) as tmp_path, open(tmp_path, 'wb') as f:
                 for chunk in response.iter_content(chunk_size=1 << 20):  # 1 MB
                     f.write(chunk)
             return local_path
@@ -184,6 +196,59 @@ def _download_year(model, ssp, ensemble, variable, year,
                 raise RuntimeError(
                     f"Could not download {url} after {max_retries} attempts."
                 ) from exc
+
+
+# ---------------------------------------------------------------------------
+# Calendar handling
+# ---------------------------------------------------------------------------
+
+# NEX-GDDP-CMIP6 keeps each model's native calendar (e.g. GFDL-ESM4: noleap,
+# UKESM1-0-LL: 360_day). AquaCrop reads weather row by row, one row per real
+# day, so every series is mapped onto the standard calendar.
+_STANDARD_CALENDARS = {'standard', 'gregorian', 'proleptic_gregorian'}
+
+
+def _to_standard_calendar(ds, nex_var):
+    """Return ``ds`` on the standard calendar, with one time step per real day.
+
+    Models on a ``noleap``/``365_day`` calendar lack 29 February, models on a
+    ``360_day`` calendar lack five or six days a year. Those days are inserted
+    (spread evenly through the year for 360-day models) and filled:
+
+    - precipitation (``pr``) with 0, so annual totals are unchanged;
+    - every other variable by linear interpolation in time.
+
+    Cells that are missing in space stay missing, so the spatial gap-fill in
+    :func:`_preprocess_and_save` still finds them. Time stamps are normalised
+    to midnight.
+
+    Args:
+        ds (xr.Dataset): One NEX variable as downloaded, with a ``time`` axis.
+        nex_var (str): NEX-GDDP variable name (e.g. ``'pr'``, ``'tasmax'``).
+
+    Returns:
+        tuple[xr.Dataset, str]: The converted dataset and the source calendar.
+    """
+    calendar = ds.time.dt.calendar
+    if calendar in _STANDARD_CALENDARS:
+        if not np.issubdtype(ds.time.dtype, np.datetime64):   # decoded as cftime
+            ds = ds.convert_calendar('standard', use_cftime=False)
+    else:
+        ds = ds.load()   # one year per file, so loading is cheap and interpolation needs it
+        align_on = 'year' if calendar == '360_day' else None
+        mapped = ds.convert_calendar('standard', align_on=align_on, use_cftime=False)
+        ds = ds.convert_calendar('standard', align_on=align_on, missing=np.nan, use_cftime=False)
+        inserted = ~ds.time.isin(mapped.time)
+
+        da = ds[nex_var]
+        # Interpolate in time; extrapolation covers an inserted first or last day
+        interp = da.interpolate_na('time', method='linear', fill_value='extrapolate')
+        # Zero rain on inserted days, but keep NaN where the cell has no data at all
+        fill = interp * 0 if nex_var == 'pr' else interp
+        ds[nex_var] = da.where(~inserted, fill)
+
+    ds = ds.assign_coords(time=ds.indexes['time'].normalize())
+    return ds, calendar
 
 
 # ---------------------------------------------------------------------------
@@ -317,7 +382,8 @@ def _calc_et0_xr(tasmin, tasmax, hurs, rsds, wind10m, elev=0.0):
 # Preprocessing: reproject → gap-fill → mask → save
 # ---------------------------------------------------------------------------
 
-def _preprocess_and_save(src, variable, yearlist, basepath, to_match, model, scenario, ensemble):
+def _preprocess_and_save(src, variable, yearlist, basepath, to_match, model, scenario, ensemble,
+                         source_calendar=None):
     """Reproject, gap-fill, mask, and save a NASA NEX climate variable.
 
     Reprojects ``src`` to the project grid, fills spatial NaN gaps by
@@ -338,6 +404,8 @@ def _preprocess_and_save(src, variable, yearlist, basepath, to_match, model, sce
             attribute.
         ensemble (str): Ensemble member identifier stored as a global file
             attribute.
+        source_calendar (str, optional): Native calendar of the model, stored
+            as a global file attribute when it was not the standard calendar.
     """
     print(f"        *** PREPROCESSING NASA NEX-GDDP-CMIP6: {variable} ***")
 
@@ -419,6 +487,11 @@ def _preprocess_and_save(src, variable, yearlist, basepath, to_match, model, sce
         'history'     : f'Preprocessed on {datetime.date.today().isoformat()} by geoaquacrop_preprocess.',
         'references'  : 'https://www.nasa.gov/nex/gddp',
     }
+    if source_calendar and source_calendar not in _STANDARD_CALENDARS:
+        src_masked.attrs['source_calendar'] = source_calendar
+        src_masked.attrs['calendar_conversion'] = (
+            f'Converted from {source_calendar} to the standard calendar; inserted days '
+            'have zero precipitation, other variables interpolated linearly in time.')
 
     src_masked.to_netcdf(
         targetfile, mode='w',
@@ -519,27 +592,24 @@ def climate_nasanex(
     # ------------------------------------------------------------------
     # Step 2 – Helper: load and concatenate yearly files for one NEX var
     # ------------------------------------------------------------------
-    def _load_years(nex_var):
-        files = [
-            os.path.join(target_dir, f"{nex_var}_{model}_{_scenario_for_year(year, scenario)}_{year}.nc")
-            for year in yearlist
-        ]
-        ds = xr.open_mfdataset(files, combine='by_coords').sortby('time')
-        # Normalise any 0-360 longitudes to -180/180
-        ds = ensure_xy_dims(ds)
-        if 'x' in ds.coords and float(ds.x.max()) > 180.0:
-            ds = ds.assign_coords(x=((ds.x + 180.0) % 360.0 - 180.0)).sortby('x')
-        return ds
+    # Native calendar of the model, recorded in the output files
+    source_calendar = {}
 
     def _load_one_year(nex_var, year):
-        """Open a single year file lazily (used for year-by-year ET₀ to limit peak RAM)."""
+        """Open a single year file on the standard calendar (also used for year-by-year ET₀ to limit peak RAM)."""
         scen = _scenario_for_year(year, scenario)
         path = os.path.join(target_dir, f"{nex_var}_{model}_{scen}_{year}.nc")
-        ds = xr.open_dataset(path)
+        # chunks={} keeps standard-calendar data lazy (dask), as for a multi-file open
+        ds = xr.open_dataset(path, chunks={}, decode_times=xr.coders.CFDatetimeCoder(use_cftime=True))
         ds = ensure_xy_dims(ds)
         if 'x' in ds.coords and float(ds.x.max()) > 180.0:
             ds = ds.assign_coords(x=((ds.x + 180.0) % 360.0 - 180.0)).sortby('x')
+        ds, source_calendar['calendar'] = _to_standard_calendar(ds, nex_var)
         return ds
+
+    def _load_years(nex_var):
+        """Load and concatenate the yearly files of one NEX variable."""
+        return xr.concat([_load_one_year(nex_var, year) for year in yearlist], dim='time').sortby('time')
 
     # ------------------------------------------------------------------
     # Step 3 – Process each requested output variable.
@@ -548,7 +618,7 @@ def climate_nasanex(
     # ReferenceET is computed year-by-year to cap peak RAM: loading all 5
     # input variables × all years at once is prohibitive for large domains.
     # ------------------------------------------------------------------
-    out_scenario = 'historical' if scenario == 'historical' else scenario
+    out_scenario = _scenario_label(yearlist, scenario)
 
     for variable in variables:
 
@@ -559,7 +629,8 @@ def climate_nasanex(
             da = ds[nex_var].astype(np.float32) - np.float32(273.15)
             da.attrs.update({'units': 'degC'})
             out = da.to_dataset(name=variable)
-            _preprocess_and_save(out, variable, yearlist, basepath, to_match, model, out_scenario, ensemble)
+            _preprocess_and_save(out, variable, yearlist, basepath, to_match, model, out_scenario, ensemble,
+                                 source_calendar=source_calendar.get('calendar'))
             ds.close()
 
         elif variable == 'Precipitation':
@@ -567,7 +638,8 @@ def climate_nasanex(
             da = (ds['pr'].astype(np.float32) * np.float32(86400.0)).clip(min=np.float32(0.0))
             da.attrs.update({'units': 'mm/day'})
             out = da.to_dataset(name=variable)
-            _preprocess_and_save(out, variable, yearlist, basepath, to_match, model, out_scenario, ensemble)
+            _preprocess_and_save(out, variable, yearlist, basepath, to_match, model, out_scenario, ensemble,
+                                 source_calendar=source_calendar.get('calendar'))
             ds.close()
 
         elif variable == 'ReferenceET':
@@ -596,7 +668,8 @@ def climate_nasanex(
 
             et0 = xr.concat(et0_parts, dim='time').sortby('time')
             out = et0.to_dataset(name='ReferenceET')
-            _preprocess_and_save(out, variable, yearlist, basepath, to_match, model, out_scenario, ensemble)
+            _preprocess_and_save(out, variable, yearlist, basepath, to_match, model, out_scenario, ensemble,
+                                 source_calendar=source_calendar.get('calendar'))
 
         else:
             print(f"        WARNING: '{variable}' not recognised – skipping.")
