@@ -805,3 +805,45 @@ def test_spam_sources_use_latest_2020_release():
     release, url = SPAM_SOURCES[("2020", "physical_area")]
     assert release == "V2r2" and "V2r2" in url and url.endswith("dl=1")
     assert spam_download_name("2020", "physical_area") == "spam2020V2r2_physical_area"
+
+
+def test_preprocess_spam_aggregation_conserves_area(test_polygon_path, test_polygon_gdf, tmp_path):
+    """Aggregating to a coarser grid must keep the total crop area.
+
+    Pixels without the crop are nodata in SPAM; averaging them away and then
+    scaling by the pixel-count ratio inflated totals (here by about 2x).
+    """
+    import rasterio
+    from rasterio import features
+    from rasterio.transform import from_origin
+    from geoaquacrop_preprocess.preprocess_tools import preprocess_spam, basegrid
+
+    to_match, _ = basegrid(test_polygon_path, resolution=0.05,
+                           templategrid_path=str(tmp_path / "template.nc"))
+    # Source 4x finer than the output grid, aligned to it, covering the domain with margin
+    res = 0.0125
+    xmin, ymin, xmax, ymax = test_polygon_gdf.total_bounds
+    x0, y1 = np.floor(xmin / 0.05) * 0.05 - 0.5, np.ceil(ymax / 0.05) * 0.05 + 0.5
+    W = int(round((np.ceil(xmax / 0.05) * 0.05 + 0.5 - x0) / res))
+    H = int(round((y1 - (np.floor(ymin / 0.05) * 0.05 - 0.5)) / res))
+    transform = from_origin(x0, y1, res, res)
+    data = np.full((H, W), np.nan, dtype=np.float32)
+    data[::2, ::2] = 50.0                                  # a quarter of the pixels carry 50 ha
+
+    spam_dir = tmp_path / "spam_data"
+    spam_dir.mkdir()
+    with rasterio.open(str(spam_dir / "spam2020_V2r2_global_A_RICE_R.tif"), "w", driver="GTiff",
+                       height=H, width=W, count=1, dtype="float32", crs="EPSG:4326",
+                       transform=transform, nodata=np.nan) as dst:
+        dst.write(data, 1)
+
+    # Expected: source pixels of output cells whose centre lies in the domain
+    # (the template grid's own rule), i.e. sum over those output cells
+    inside = to_match["Band1"].values == 1
+    cell_total = 50.0 * 4                                   # 16 source pixels per cell, 4 with 50 ha
+    expected = inside.sum() * cell_total
+
+    preprocess_spam(str(tmp_path), str(spam_dir), "2020", "physical_area", test_polygon_path, to_match)
+    with xr.open_dataset(str(tmp_path / "processed" / "spam2020_physical_area.nc")) as result:
+        total = float(result["PaddyRice_rf_physical_area"].sum())
+    assert total == pytest.approx(expected, rel=0.05)

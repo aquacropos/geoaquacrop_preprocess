@@ -202,6 +202,11 @@ def preprocess_spam(basepath, download_dir, refyear, spam_variable, domain_path,
         # Coarse bbox clip for efficiency: shrinks global file to domain extent before reproject
         buf = 0.5  # degree buffer to avoid edge effects during reprojection
         src_bbox = src.rio.clip_box(xmin_dom - buf, ymin_dom - buf, xmax_dom + buf, ymax_dom + buf)
+        if spam_variable in ('physical_area', 'harvested_area', 'production'):
+            # SPAM marks pixels without the crop as nodata. Averaging skips nodata,
+            # so the mean of only the crop pixels would be scaled up to the whole
+            # output cell below; count them as zero to keep totals unchanged.
+            src_bbox = src_bbox.fillna(0)
         src_proj = src_bbox.rio.reproject_match(to_match, resampling=Resampling.average)  # area-weighted resampling
         # Precise polygon clip for accuracy: respects domain outline at output resolution
         src_clip = safe_clip(src_proj, mask)
