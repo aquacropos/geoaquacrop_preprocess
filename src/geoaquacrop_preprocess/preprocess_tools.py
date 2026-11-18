@@ -418,9 +418,12 @@ def safe_clip(src, mask):
     # If no valid clips, return empty raster with same structure
     if not valid_clips:
         print("Warning: no valid polygons contained data.")
-        empty = src.copy(deep=True)
-        for var in list(empty.data_vars):
-            empty[var] = xr.full_like(empty[var], fill_value=np.nan)
+        if isinstance(src, xr.DataArray):
+            empty = xr.full_like(src, fill_value=np.nan, dtype=float)
+        else:
+            empty = src.copy(deep=True)
+            for var in list(empty.data_vars):
+                empty[var] = xr.full_like(empty[var], fill_value=np.nan)
         if "band" in empty.dims and empty.sizes["band"] == 1:
             empty = empty.squeeze("band", drop=True)
         return empty
