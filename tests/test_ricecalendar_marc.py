@@ -19,11 +19,11 @@ def _make_marc_ds(lats, lons, values=None):
     """Create a synthetic MARC rice calendar Dataset."""
     H, W = len(lats), len(lons)
     if values is None:
-        # Default: planting DOY 90 (spring), harvest DOY 210 (autumn)
-        values = {"transplant": 90.0, "harvest": 210.0}
+        # Default: three sequential seasons, 90->180, 190->280 and 300->60
+        values = {"transplant": 90.0, "harvest": 180.0}
 
     tp = values.get("transplant", 90.0)
-    hv = values.get("harvest", 210.0)
+    hv = values.get("harvest", 180.0)
 
     def _da(val):
         return xr.DataArray(
@@ -34,8 +34,8 @@ def _make_marc_ds(lats, lons, values=None):
     return xr.Dataset({
         "Transplanting_1_Cropping": _da(tp),
         "Harvest_1_Cropping"      : _da(hv),
-        "Transplanting_2_Cropping": _da(tp + 90),
-        "Harvest_2_Cropping"      : _da(hv + 90),
+        "Transplanting_2_Cropping": _da(tp + 100),
+        "Harvest_2_Cropping"      : _da(hv + 100),
         # Season 3 crosses the year boundary (harvest DOY < planting DOY)
         "Transplanting_3_Cropping": _da(300.0),
         "Harvest_3_Cropping"      : _da(60.0),
@@ -334,7 +334,7 @@ def _make_marc_group_ds(lats, lons):
         "Transplanting_1_Group": _da(np.full(shape, 200.0)),
         "Harvest_1_Group":       _da(np.full(shape, 305.0)),
         "Transplanting_2_Group": _da(np.full(shape, 100.0)),
-        "Harvest_2_Group":       _da(np.full(shape, 200.0)),
+        "Harvest_2_Group":       _da(np.full(shape, 190.0)),
         "Transplanting_3_Group": _da(np.where(north, 340.0, np.nan)),
         "Harvest_3_Group":       _da(np.where(north, 80.0, np.nan)),
     })
@@ -373,3 +373,106 @@ def test_unknown_calendar_type_raises(marc_setup):
     domain_path, basepath, template_path, *_ = marc_setup
     with pytest.raises(ValueError, match="calendar_type"):
         ricecalendar_marc(domain_path, basepath, template_path, calendar_type="season")
+
+
+# ---------------------------------------------------------------------------
+# fill_and_sequence: gap filling without overlapping seasons
+# ---------------------------------------------------------------------------
+
+from geoaquacrop_preprocess.ricecalendar_marc import (
+    fill_and_sequence, _conflict,
+    SOURCE_OBSERVED, SOURCE_OBSERVED_SHIFTED, SOURCE_FILLED, SOURCE_FILLED_SHIFTED,
+)
+
+
+def _grid(*seasons):
+    """Stack per-season (plant, harvest) 2-D lists into (season, y, x) arrays."""
+    plant = np.array([np.array(p, dtype=float) for p, _ in seasons])
+    harvest = np.array([np.array(h, dtype=float) for _, h in seasons])
+    return plant, harvest
+
+
+def test_observed_overlap_is_shifted_after_harvest_plus_fallow():
+    # season 1: 200 -> 300; season 2: 290 -> 20 overlaps it by 10 days
+    plant, harvest = _grid(([[200.0]], [[300.0]]), ([[290.0]], [[20.0]]))
+    p, length, src = fill_and_sequence(plant, harvest, min_fallow_days=7)
+    assert p[0, 0, 0] == 200 and src[0, 0, 0] == SOURCE_OBSERVED
+    assert p[1, 0, 0] == 307 and length[1, 0, 0] == 95
+    assert src[1, 0, 0] == SOURCE_OBSERVED_SHIFTED
+
+
+def test_empty_cell_takes_all_seasons_from_one_neighbour():
+    nan = np.nan
+    # cell (0,0) observes both seasons; cell (0,3) observes a different season 1;
+    # cell (0,1) is empty and nearest to (0,0)
+    plant, harvest = _grid(([[180.0, nan, nan, 150.0]], [[280.0, nan, nan, 250.0]]),
+                           ([[320.0, nan, nan, nan]], [[40.0, nan, nan, nan]]))
+    p, length, src = fill_and_sequence(plant, harvest)
+    # the empty cell copies (0,0)'s complete, sequential set
+    assert (p[0, 0, 1], p[1, 0, 1]) == (180.0, 320.0)
+    assert src[0, 0, 1] == SOURCE_FILLED and src[1, 0, 1] == SOURCE_FILLED
+
+
+def test_missing_season_filled_from_neighbour_and_shifted():
+    nan = np.nan
+    # cell (0,0): season 1 observed 200 -> 300, season 2 missing
+    # cell (0,1): season 2 observed 280 -> 10, which would overlap cell (0,0)'s season 1
+    plant, harvest = _grid(([[200.0, nan]], [[300.0, nan]]),
+                           ([[nan, 280.0]], [[nan, 10.0]]))
+    p, length, src = fill_and_sequence(plant, harvest, min_fallow_days=7)
+    assert p[1, 0, 0] == 307 and length[1, 0, 0] == 95
+    assert src[1, 0, 0] == SOURCE_FILLED_SHIFTED
+
+
+def test_season_moves_by_fewest_days_earlier_or_later():
+    # season 1 observed 200 -> 300; season 2 observed 180 -> 250 (70 days) overlaps it.
+    # Later: start 307 (+127 days). Earlier: harvest by 193, start 123 (-57 days).
+    plant, harvest = _grid(([[200.0]], [[300.0]]), ([[180.0]], [[250.0]]))
+    p, length, src = fill_and_sequence(plant, harvest, min_fallow_days=7)
+    assert p[1, 0, 0] == 123 and length[1, 0, 0] == 70
+    assert src[1, 0, 0] == SOURCE_OBSERVED_SHIFTED
+
+
+def test_season_that_cannot_fit_is_left_empty():
+    # two 200-day seasons cannot both fit into one year
+    plant, harvest = _grid(([[100.0]], [[300.0]]), ([[150.0]], [[350.0]]))
+    p, length, src = fill_and_sequence(plant, harvest)
+    assert np.isfinite(p[0, 0, 0]) and np.isnan(p[1, 0, 0]) and src[1, 0, 0] == 0
+
+
+@pytest.mark.parametrize("fallow", [0, 7, 15])
+def test_no_cell_has_overlapping_seasons(fallow):
+    """Random calendars with gaps and overlaps: the output never overlaps."""
+    rng = np.random.default_rng(1)
+    shape = (3, 20, 20)
+    plant = rng.uniform(1, 365, shape)
+    harvest = plant + rng.uniform(80, 130, shape)
+    plant[rng.random(shape) < 0.4] = np.nan               # 40 % missing seasons
+    p, length, src = fill_and_sequence(plant, harvest, min_fallow_days=fallow)
+    for a in range(3):
+        for b in range(a + 1, 3):
+            both = np.isfinite(p[a]) & np.isfinite(p[b])
+            assert not _conflict(p[a][both], length[a][both], p[b][both], length[b][both], fallow).any()
+    # every cell keeps at least one season, dates are whole days, and lengths
+    # are unchanged by shifting
+    assert np.isfinite(p).any(axis=0).all()
+    assert np.array_equal(p[np.isfinite(p)], np.round(p[np.isfinite(p)]))
+    observed = (src == SOURCE_OBSERVED) | (src == SOURCE_OBSERVED_SHIFTED)
+    expected = np.mod(np.round(harvest) - np.round(plant), 365)
+    assert np.allclose(length[observed], expected[observed])
+
+
+def test_groups_selects_and_sequences_only_listed_seasons(marc_setup):
+    ds = _run_group(marc_setup, groups=(1, 3))
+    assert "PaddyRice2_rf_planting" not in ds.data_vars
+    assert {"PaddyRice1_rf_planting", "PaddyRice3_rf_planting",
+            "PaddyRice1_calendar_source", "PaddyRice3_calendar_source"} <= set(ds.data_vars)
+    assert list(np.atleast_1d(ds.attrs["groups"])) == [1, 3]
+    ds.close()
+
+
+def test_invalid_groups_raise(marc_setup):
+    from geoaquacrop_preprocess.ricecalendar_marc import ricecalendar_marc
+    domain_path, basepath, template_path, *_ = marc_setup
+    with pytest.raises(ValueError, match="groups"):
+        ricecalendar_marc(domain_path, basepath, template_path, groups=(1, 4))

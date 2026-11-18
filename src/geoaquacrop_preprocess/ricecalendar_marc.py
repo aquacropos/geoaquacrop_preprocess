@@ -12,7 +12,118 @@ MARC_CALENDARS = {
 }
 
 
-def ricecalendar_marc(domain_path, basepath, referenceraster_path, calendar_type='group'):
+# Origin of each season's dates in the output (variable <crop>_calendar_source)
+SOURCE_OBSERVED, SOURCE_OBSERVED_SHIFTED, SOURCE_FILLED, SOURCE_FILLED_SHIFTED = 1, 2, 3, 4
+
+
+def _doy(x):
+    """Wrap day-of-year values to 1-365."""
+    return (x - 1) % 365 + 1
+
+
+def _conflict(start_a, length_a, start_b, length_b, min_fallow_days):
+    """True where two seasons (start DOY, length in days) overlap on the yearly
+    cycle or leave fewer than ``min_fallow_days`` between them."""
+    gap_ab = (start_b - (start_a + length_a)) % 365     # end of a -> start of b
+    gap_ba = (start_a - (start_b + length_b)) % 365     # end of b -> start of a
+    # Disjoint seasons and their two gaps cover the year exactly once
+    overlap = gap_ab + length_b + gap_ba + length_a > 365 + 1e-6
+    return overlap | (gap_ab < min_fallow_days) | (gap_ba < min_fallow_days)
+
+
+def fill_and_sequence(plant, harvest, min_fallow_days=7):
+    """Fill missing seasons and make the seasons of each cell sequential.
+
+    MARC estimates each season's dates separately per 0.5° cell, from sampled
+    fields and smoothed over neighbouring cells (Zhao et al. 2024, Sect. 2.3),
+    so seasons of one cell can overlap, and a cell can lack a season that a
+    crop model needs. This function returns a calendar in which, in every
+    cell, no two seasons grow at the same time.
+
+    1. Cells without any season copy all seasons from the nearest cell that
+       has at least one, so their seasons come from one place.
+    2. A season still missing is copied from the nearest cell that has it.
+    3. In each cell, seasons are placed in priority order: observed before
+       filled, then in the order given. A season that overlaps an already
+       placed one, or starts or ends less than ``min_fallow_days`` from it,
+       is moved by the fewest days that make it fit, earlier or later,
+       keeping its length. A season that fits nowhere is left empty.
+
+    Args:
+        plant (numpy.ndarray): Transplanting DOY, shape (season, y, x); NaN or
+            <= 0 where missing.
+        harvest (numpy.ndarray): Harvest DOY, same shape.
+        min_fallow_days (int): Minimum days between the harvest of one season
+            and the transplanting of the next.
+
+    Returns:
+        tuple[numpy.ndarray, numpy.ndarray, numpy.ndarray]: Transplanting DOY,
+        season length (days) and origin code per season and cell
+        (``SOURCE_*``; 0 where empty).
+    """
+    import numpy as np
+    import scipy.ndimage as ndi
+
+    # Whole days, so the sequencing below still holds after the output is rounded
+    plant = np.round(np.where(plant > 0, plant, np.nan).astype(float))
+    harvest = np.round(np.where(harvest > 0, harvest, np.nan).astype(float))
+    length = np.mod(harvest - plant, 365)
+    observed = np.isfinite(plant) & np.isfinite(length) & (length > 0)
+    plant = np.where(observed, plant, np.nan)
+    length = np.where(observed, length, np.nan)
+    source = np.where(observed, SOURCE_OBSERVED, 0)
+
+    # 1. Cells with no season at all: all seasons from the nearest cell with any
+    any_obs = observed.any(axis=0)
+    if any_obs.any():
+        _, (iy, ix) = ndi.distance_transform_edt(~any_obs, return_indices=True)
+        empty = ~any_obs
+        donor = observed[:, iy, ix] & empty
+        plant = np.where(donor, plant[:, iy, ix], plant)
+        length = np.where(donor, length[:, iy, ix], length)
+        source = np.where(donor, SOURCE_FILLED, source)
+
+    # 2. Seasons still missing: from the nearest cell that observes that season
+    for k in range(plant.shape[0]):
+        if not observed[k].any():
+            continue
+        _, (iy, ix) = ndi.distance_transform_edt(~observed[k], return_indices=True)
+        missing = source[k] == 0
+        plant[k] = np.where(missing, plant[k][iy, ix], plant[k])
+        length[k] = np.where(missing, length[k][iy, ix], length[k])
+        source[k] = np.where(missing, SOURCE_FILLED, source[k])
+
+    # 3. Sequence the seasons of every cell with more than one
+    n_seasons = np.isfinite(plant).sum(axis=0)
+    for y, x in zip(*np.nonzero(n_seasons > 1)):
+        order = sorted((k for k in range(plant.shape[0]) if np.isfinite(plant[k, y, x])),
+                       key=lambda k: (source[k, y, x] != SOURCE_OBSERVED, k))
+        placed = []
+        for k in order:
+            start, dur = plant[k, y, x], length[k, y, x]
+            # The smallest move that fits starts either at the original date, just
+            # after a placed season (its harvest + fallow), or just before one
+            # (harvest = its transplanting - fallow)
+            candidates = ([start]
+                          + [_doy(s + l + min_fallow_days) for s, l in placed]
+                          + [_doy(s - min_fallow_days - dur) for s, l in placed])
+            candidates.sort(key=lambda c: min((c - start) % 365, (start - c) % 365))
+            fits = [c for c in candidates
+                    if not any(_conflict(c, dur, s, l, min_fallow_days) for s, l in placed)]
+            if not fits:
+                plant[k, y, x] = length[k, y, x] = np.nan
+                source[k, y, x] = 0
+                continue
+            if fits[0] != start:
+                plant[k, y, x] = fits[0]
+                source[k, y, x] += 1          # observed -> observed, shifted; filled -> filled, shifted
+            placed.append((plant[k, y, x], dur))
+
+    return plant, length, source
+
+
+def ricecalendar_marc(domain_path, basepath, referenceraster_path, calendar_type='group',
+                      groups=(1, 2, 3), min_fallow_days=7):
     """Download and preprocess the MARC rice calendar dataset.
 
     Downloads the Monsoon Asia Rice Calendar (MARC, https://essd.copernicus.org/articles/16/3893/2024/), reprojects to
@@ -26,8 +137,16 @@ def ricecalendar_marc(domain_path, basepath, referenceraster_path, calendar_type
     seasonal groups: transplanting in Jul-Oct (main/wet season), Mar-Jun and
     Nov-Feb (dry season), the same season in every cell. With
     ``'cropping'``, they are the first, second and third crop of each cell in
-    calendar order. MARC's native grid is 0.5°; cells without a season are
-    filled from neighbouring cells (see below).
+    calendar order.
+
+    On MARC's native 0.5° grid, missing seasons are filled from the nearest
+    cells and the seasons of each cell are made sequential, so no two crops
+    grow at the same time in a cell (see :func:`fill_and_sequence`). Only the
+    seasons listed in ``groups`` are produced and sequenced against each
+    other, so an unused season cannot displace one that is simulated. The
+    variable ``PaddyRice<k>_calendar_source`` records where each cell's dates
+    come from: 1 observed, 2 observed and shifted, 3 filled, 4 filled and
+    shifted.
 
     Args:
         domain_path (str): Path to the domain polygon file (GeoJSON or shapefile,
@@ -38,6 +157,10 @@ def ricecalendar_marc(domain_path, basepath, referenceraster_path, calendar_type
         referenceraster_path (str): Path to the template raster NetCDF used to
             align the output grid.
         calendar_type (str): ``'group'`` (default) or ``'cropping'``; see above.
+        groups (tuple[int]): Seasons (groups or croppings) to produce, from 1, 2
+            and 3. Default all three.
+        min_fallow_days (int): Minimum days between the harvest of one season
+            and the transplanting of the next in a cell. Default 7.
     """
 
     import os
@@ -50,6 +173,9 @@ def ricecalendar_marc(domain_path, basepath, referenceraster_path, calendar_type
 
     if calendar_type not in MARC_CALENDARS:
         raise ValueError(f"calendar_type must be one of {list(MARC_CALENDARS)}, not {calendar_type!r}")
+    groups = tuple(groups)
+    if not groups or not set(groups) <= {1, 2, 3} or len(set(groups)) != len(groups):
+        raise ValueError(f"groups must be distinct values from 1, 2 and 3, not {groups!r}")
     marc_name, transplant_pattern, harvest_pattern = MARC_CALENDARS[calendar_type]
 
     # ------------------------------------------------------------------ #
@@ -126,116 +252,31 @@ def ricecalendar_marc(domain_path, basepath, referenceraster_path, calendar_type
               f"[{raster_bounds[0]}, {raster_bounds[1]}, {raster_bounds[2]}, {raster_bounds[3]}]")
 
     # ------------------------------------------------------------------ #
-    # Helper: iteratively fill NaN cells by copying the (plant, harvest)
-    # pair from the valid 8-neighbor with the shortest growing season.
-    # Both arrays are filled jointly so the pair always stays coherent.
+    # Fill missing seasons and sequence them, on the native grid
+    # Group (or cropping) k -> PaddyRice<k>
     # ------------------------------------------------------------------ #
-    def fill_nodata_joint(plant_arr, harvest_arr):
-        """
-        Fill NaN cells in plant_arr and harvest_arr jointly.
-        For each NaN cell, examine up to 8 immediate neighbors that have BOTH
-        valid planting and harvest values.  Among those valid neighbors, copy
-        the (plant, harvest) pair from the one with the shortest growing season
-        (harvest − plant, accounting for year-boundary crossing).
-        Iterates until no further progress is possible.
-        """
-        offsets = [(-1, -1), (-1, 0), (-1, 1),
-                   (0,  -1),          (0,  1),
-                   (1,  -1), (1,  0), (1,  1)]
-
-        plant   = plant_arr.copy().astype(float)
-        harvest = harvest_arr.copy().astype(float)
-        nrows, ncols = plant.shape
-        prev_nan_count = -1
-
-        while True:
-            valid    = ~(np.isnan(plant) | np.isnan(harvest))
-            nan_mask = ~valid
-            nan_count = int(nan_mask.sum())
-            if nan_count == 0 or nan_count == prev_nan_count:
-                break   # fully filled, or no progress (isolated islands)
-
-            # Season length for valid cells; invalid cells get inf so they
-            # are never chosen as the "shortest-season" neighbor.
-            raw_season = harvest - plant
-            season = np.where(
-                valid,
-                np.where(raw_season <= 0, raw_season + 365, raw_season),
-                np.inf
-            )
-
-            # Pad all three arrays to handle grid boundaries cleanly.
-            pad_p = np.pad(plant,   1, mode='constant', constant_values=np.nan)
-            pad_h = np.pad(harvest, 1, mode='constant', constant_values=np.nan)
-            pad_s = np.pad(season,  1, mode='constant', constant_values=np.inf)
-
-            # Build 8 shifted views: shape (8, nrows, ncols)
-            nbr_p = np.stack([pad_p[1+dr:nrows+1+dr, 1+dc:ncols+1+dc] for dr, dc in offsets])
-            nbr_h = np.stack([pad_h[1+dr:nrows+1+dr, 1+dc:ncols+1+dc] for dr, dc in offsets])
-            nbr_s = np.stack([pad_s[1+dr:nrows+1+dr, 1+dc:ncols+1+dc] for dr, dc in offsets])
-
-            # For each cell pick the neighbor index with the shortest season.
-            best_idx     = np.argmin(nbr_s, axis=0)        # shape (nrows, ncols)
-            best_idx_exp = best_idx[np.newaxis]             # shape (1, nrows, ncols)
-            best_p = np.take_along_axis(nbr_p, best_idx_exp, axis=0)[0]
-            best_h = np.take_along_axis(nbr_h, best_idx_exp, axis=0)[0]
-
-            # Only fill NaN cells that have at least one valid neighbor.
-            has_valid_nbr = np.min(nbr_s, axis=0) < np.inf
-            fill_here = nan_mask & has_valid_nbr
-
-            plant   = np.where(fill_here, best_p, plant)
-            harvest = np.where(fill_here, best_h, harvest)
-            prev_nan_count = nan_count
-
-        return plant, harvest
-
-    # ------------------------------------------------------------------ #
-    # Define crop cycles
-    # Group (or cropping) 1 → PaddyRice1, 2 → PaddyRice2, 3 → PaddyRice3
-    # ------------------------------------------------------------------ #
-    crop_cycles = [
-        (f'PaddyRice{k}', transplant_pattern.format(k=k), harvest_pattern.format(k=k))
-        for k in (1, 2, 3)
-    ]
+    plant_all = np.stack([src[transplant_pattern.format(k=k)].astype(float).values for k in groups])
+    harvest_all = np.stack([src[harvest_pattern.format(k=k)].astype(float).values for k in groups])
+    plant_all, season_all, source_all = fill_and_sequence(plant_all, harvest_all, min_fallow_days)
+    template = src[transplant_pattern.format(k=groups[0])].astype(float)
 
     file_to_mosaic = []
 
-    for crop_name, transplant_var, harvest_var in crop_cycles:
+    for i, k in enumerate(groups):
+        crop_name = f'PaddyRice{k}'
+        print(f"    Processing {crop_name} ({transplant_pattern.format(k=k)} / {harvest_pattern.format(k=k)})")
 
-        print(f"    Processing {crop_name} ({transplant_var} / {harvest_var})")
-
-        # Extract DataArrays; xarray auto-masks fill values as NaN
-        plant_da = src[transplant_var].astype(float)
-        harvest_da = src[harvest_var].astype(float)
-
-        # Treat zero or negative DOY as nodata (safety guard for non-CF fill values)
-        plant_da = plant_da.where(plant_da > 0)
-        harvest_da = harvest_da.where(harvest_da > 0)
-
-        # ---- Fill nodata BEFORE resampling (joint fill, shortest-season neighbor) ----
-        plant_filled_arr, harvest_filled_arr = fill_nodata_joint(plant_da.values, harvest_da.values)
-
-        plant_da_filled   = plant_da.copy(data=plant_filled_arr)
-        harvest_da_filled = harvest_da.copy(data=harvest_filled_arr)
-
-        # Propagate CRS to the filled DataArrays
-        plant_da_filled.rio.write_crs(4326, inplace=True)
-        harvest_da_filled.rio.write_crs(4326, inplace=True)
-
-        # ---- Compute growing season length (cyclic DOY) ----
-        season_days = harvest_da_filled - plant_da_filled
-        # When harvest DOY < planting DOY the season crosses the year boundary
-        season_days = xr.where(season_days <= 0, season_days + 365, season_days)
-        season_days.rio.write_crs(4326, inplace=True)
-
-        # ---- Reproject to reference grid ----
-        plant_proj = plant_da_filled.rio.reproject_match(to_match)
-        season_proj = season_days.rio.reproject_match(to_match)
-
-        # ---- Clip to domain polygon ----
-        plant_clip = safe_clip(plant_proj, mask)
-        season_clip = safe_clip(season_proj, mask)
+        layers_native = {
+            'planting': template.copy(data=plant_all[i]),
+            'season': template.copy(data=season_all[i]),
+            'source': template.copy(data=source_all[i].astype(float)),
+        }
+        processed = {}
+        for name, da in layers_native.items():
+            da.rio.write_crs(4326, inplace=True)
+            # ---- Reproject to reference grid (nearest neighbour) and clip to domain ----
+            processed[name] = safe_clip(da.rio.reproject_match(to_match), mask)
+        plant_clip, season_clip = processed['planting'], processed['season']
 
         # Replace DOY 60 (Feb 29) with 61 (Mar 1) to avoid leap-year artefacts
         plant_clip = plant_clip.where(plant_clip != 60, 61)
@@ -267,6 +308,17 @@ def ricecalendar_marc(domain_path, basepath, referenceraster_path, calendar_type
             file_to_mosaic.append(plant_layer)
             file_to_mosaic.append(season_layer)
 
+        source_clip = processed['source']
+        file_to_mosaic.append(xr.DataArray(
+            source_clip.values.astype('float32'),
+            dims=source_clip.dims,
+            coords=source_clip.coords,
+            name=f'{crop_name}_calendar_source',
+            attrs={'long_name': f'Origin of the {crop_name} dates',
+                   'flag_values': [SOURCE_OBSERVED, SOURCE_OBSERVED_SHIFTED, SOURCE_FILLED, SOURCE_FILLED_SHIFTED],
+                   'flag_meanings': 'observed observed_shifted filled filled_shifted'},
+        ))
+
     # ------------------------------------------------------------------ #
     # Merge all layers and save
     # ------------------------------------------------------------------ #
@@ -275,6 +327,11 @@ def ricecalendar_marc(domain_path, basepath, referenceraster_path, calendar_type
     src_mosaic.attrs.update({
         'source': f'MARC v1.0 rice calendar, {marc_name}',
         'calendar_type': calendar_type,
+        'groups': list(groups),
+        'min_fallow_days': min_fallow_days,
+        'gap_filling': ('missing seasons copied from the nearest cell (all seasons from one cell where a '
+                        'cell has none); seasons of each cell made sequential with at least min_fallow_days '
+                        'between them (geoaquacrop_preprocess.ricecalendar_marc.fill_and_sequence)'),
         'seasons': ('PaddyRice1: transplanting DOY 182-304 (main/wet season); PaddyRice2: DOY 60-181; '
                     'PaddyRice3: DOY 305-59 (dry season)') if calendar_type == 'group' else
                    'PaddyRice1/2/3: first, second and third rice crop of each cell in calendar order',
