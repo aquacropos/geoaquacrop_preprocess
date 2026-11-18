@@ -247,3 +247,15 @@ def test_weather_forwards_climate_source(test_polygon_path, tmp_path):
                                 workingdirectory=str(tmp_path))
     assert m_run.call_args.kwargs["climate_source"] == "nasanex"
     assert m_run.call_args.kwargs["preprocess"] == ["climate"]
+
+
+# ---------------------------------------------------------------------------
+# Default grid resolution
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("name", ["run", "weather", "soil", "crop_calendar", "crop_area"])
+def test_default_cell_resolution_is_agera5_native(name):
+    import inspect
+    from geoaquacrop_preprocess import preprocess_main
+    func = getattr(preprocess_main, name)
+    assert inspect.signature(func).parameters["cell_resolution"].default == 0.1

@@ -43,7 +43,7 @@ This package is the data preparation stage of [**GeoAquaCrop**](https://github.c
 | Climate (future) | Min/max temperature, precipitation, reference ET | [NASA NEX-GDDP-CMIP6](https://www.nccs.nasa.gov/services/data-collections/land-based-products/nex-gddp-cmip6) | 0.25°, daily |
 | Soil | Clay, sand, silt, soil organic matter (6 depth layers) | [ISRIC SoilGrids](https://soilgrids.org/) | 250 m |
 | Crop calendar | Planting day of year, growing season length | [GGCMI phase 3 v1.01](https://zenodo.org/records/5062513) | 0.5° |
-| Crop areas | Physical area by crop and irrigation type | [SPAM 2010/2020](https://www.mapspam.info/) | ~10 km |
+| Crop areas | Physical area by crop and irrigation type | [SPAM 2010 (V2r0) / 2020 (V2r2)](https://www.mapspam.info/) | ~10 km |
 
 The climate data source is selected automatically:
 
@@ -83,7 +83,7 @@ workingdirectory = '/path/to/your/output/directory'
 domain_path      = '/path/to/your/domain.geojson'   # polygon in EPSG:4326
 start_year       = 2020
 end_year         = 2022
-cell_resolution  = 0.05   # output grid size in degrees (~3 arcmin)
+cell_resolution  = 0.1    # output grid size in degrees (~6 arcmin, AgERA5 native)
 api_token        = 'your-copernicus-api-token'       # required for AgERA5 only
 ```
 
@@ -105,7 +105,7 @@ run(
     start_year=2020,
     end_year=2022,
     api_token='your-api-token',       # required for AgERA5 only
-    cell_resolution=0.05,
+    cell_resolution=0.1,
     workingdirectory='/path/to/output',
 )
 ```
@@ -139,7 +139,7 @@ Raw downloaded files are kept in `<workingdirectory>/rawdata/` as resumable chec
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
-| `cell_resolution` | `0.05` | Output grid cell size in decimal degrees |
+| `cell_resolution` | `0.1` | Output grid cell size in decimal degrees |
 | `preprocess` | all steps | Steps to run: `'soil'`, `'crop_areas'`, `'crop_calendar'`, `'climate'` |
 | `nasanex_model` | `'GFDL-CM4'` | CMIP6 model name (see [catalog](https://ds.nccs.nasa.gov/thredds/catalog/AMES/NEX/GDDP-CMIP6/catalog.html)) |
 | `nasanex_scenario` | `'ssp245'` | SSP scenario for years >= 2015 |

@@ -172,9 +172,10 @@ def test_crop_areas_physical_area(test_polygon_path, test_polygon_gdf, tmp_path,
 
     # Determine the refyear and pre-create the unzipped directory
     from geoaquacrop_preprocess.preprocess_tools import spam_refyear, makedirs
+    from geoaquacrop_preprocess.crop_areas import spam_download_name
     refyear = spam_refyear(2020, 2030)   # → '2020'
     target_dir = makedirs(str(tmp_path), "rawdata", "cropmasks")
-    spam_unzipped_dir = tmp_path / "rawdata" / "cropmasks" / f"spam{refyear}_physical_area"
+    spam_unzipped_dir = tmp_path / "rawdata" / "cropmasks" / spam_download_name(refyear, "physical_area")
     spam_unzipped_dir.mkdir(parents=True)
     _create_synthetic_spam_tifs(spam_unzipped_dir, test_polygon_gdf, refyear, "physical_area")
 
@@ -193,12 +194,13 @@ def test_crop_areas_skips_processing_when_output_exists(test_polygon_path, test_
     """crop_areas() should skip processing if the target NetCDF already exists."""
     from geoaquacrop_preprocess.crop_areas import crop_areas
     from geoaquacrop_preprocess.preprocess_tools import spam_refyear, makedirs
+    from geoaquacrop_preprocess.crop_areas import spam_download_name
 
     to_match, _, _ = template_grid
     refyear = spam_refyear(2020, 2030)
 
     # Pre-create unzipped dir and the processed output
-    spam_unzipped_dir = tmp_path / "rawdata" / "cropmasks" / f"spam{refyear}_physical_area"
+    spam_unzipped_dir = tmp_path / "rawdata" / "cropmasks" / spam_download_name(refyear, "physical_area")
     spam_unzipped_dir.mkdir(parents=True)
     processed_dir = tmp_path / "processed"
     processed_dir.mkdir(parents=True)

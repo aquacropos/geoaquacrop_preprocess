@@ -35,7 +35,7 @@ a common output grid:
      - 0.5°
    * - Crop areas
      - Physical area by crop and irrigation type
-     - `SPAM 2010/2020 <https://www.mapspam.info/>`_
+     - `SPAM 2010 (V2r0) / 2020 (V2r2) <https://www.mapspam.info/>`_
      - ~10 km
 
 The climate source is chosen automatically: **AgERA5 reanalysis** is used when

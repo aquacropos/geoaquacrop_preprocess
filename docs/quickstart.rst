@@ -20,7 +20,7 @@ Key input arguments:
    domain_path      = '/path/to/your/domain.geojson'   # polygon in EPSG:4326
    start_year       = 2020
    end_year         = 2022
-   cell_resolution  = 0.05   # degrees (~3 arcmin)
+   cell_resolution  = 0.1    # degrees (~6 arcmin, AgERA5 native)
    api_token        = 'your-copernicus-api-token'       # required for AgERA5 only
 
 For future climate projections (NASA NEX-GDDP-CMIP6), also set:
@@ -43,7 +43,7 @@ Option B — Python API
        start_year=2020,
        end_year=2022,
        api_token='your-api-token',       # required for AgERA5 only
-       cell_resolution=0.05,
+       cell_resolution=0.1,
        workingdirectory='/path/to/output',
    )
 
